@@ -2,16 +2,17 @@
   <div class="toc-container">
     <h3 class="toc-title">目录</h3>
 
-    <div v-if="headings.length > 0" class="toc-list">
-      <div
+    <mdui-list v-if="headings.length > 0" class="toc-list">
+      <mdui-list-item
           v-for="(heading, index) in headings"
           :key="index"
-          :class="['toc-link', `level-${heading.level}`, { active: activeId === heading.id }]"
+          :class="['toc-item', `level-${heading.level}`]"
+          :data-id="heading.id"
           @click="scrollToHeading(heading.id)"
       >
         {{ heading.text }}
-      </div>
-    </div>
+      </mdui-list-item>
+    </mdui-list>
 
     <div v-else class="toc-empty">暂无目录</div>
   </div>
@@ -26,6 +27,35 @@ const headings = ref<Array<{ id: string; text: string; level: number }>>([])
 const activeId = ref('')
 const route = useRoute()
 let observer: IntersectionObserver | null = null
+
+// ✅ 核心函数：手动修改 DOM 颜色
+const updateActiveStyle = (newId: string) => {
+  // 1. 获取所有目录项
+  const allItems = document.querySelectorAll('.toc-item')
+
+  allItems.forEach(item => {
+    const el = item as HTMLElement
+    const isActive = el.dataset.id === newId
+
+    // 2. 设置宿主元素样式
+    el.style.color = isActive ? '#6750A4' : '#666'
+    el.style.fontWeight = isActive ? '600' : '400'
+    el.style.backgroundColor = 'transparent'
+
+    // 3. ✅ 关键：穿透 Shadow DOM 修改内部文字颜色
+    const shadowRoot = (el as any).shadowRoot
+    if (shadowRoot) {
+      // 尝试查找所有可能的文字容器
+      const targets = shadowRoot.querySelectorAll('*')
+      targets.forEach((target: any) => {
+        if (target.style) {
+          target.style.color = isActive ? '#6750A4' : ''
+          target.style.fontWeight = isActive ? '600' : ''
+        }
+      })
+    }
+  })
+}
 
 const extractHeadings = () => {
   const container = document.querySelector(props.containerSelector)
@@ -43,7 +73,7 @@ const setupIntersectionObserver = () => {
 
   observer = new IntersectionObserver(
       (entries) => {
-        let topElement: Element | null = null // 👈 先定义为 Element
+        let topElement: Element | null = null
         let minTop = Infinity
 
         entries.forEach(entry => {
@@ -56,9 +86,12 @@ const setupIntersectionObserver = () => {
           }
         })
 
-        // ✅ 关键修复：在这里进行类型转换和检查
         if (topElement && 'id' in topElement) {
-          activeId.value = (topElement as HTMLElement).id
+          const newId = (topElement as HTMLElement).id
+          if (newId !== activeId.value) {
+            activeId.value = newId
+            updateActiveStyle(newId)
+          }
         }
       },
       {
@@ -70,16 +103,25 @@ const setupIntersectionObserver = () => {
 
   container.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(el => observer?.observe(el))
 }
+
 const scrollToHeading = (id: string) => {
   const el = document.getElementById(id)
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     activeId.value = id
+    updateActiveStyle(id) // 点击时也立即更新颜色
   }
 }
 
 watch(() => route.path, () => {
-  setTimeout(() => { extractHeadings(); setupIntersectionObserver() }, 100)
+  setTimeout(() => {
+    extractHeadings()
+    setupIntersectionObserver()
+    // 初始化时高亮第一个
+    if (headings.value.length > 0) {
+      updateActiveStyle(headings.value[0].id)
+    }
+  }, 100)
 }, { immediate: true })
 
 onUnmounted(() => observer?.disconnect())
@@ -101,7 +143,12 @@ onUnmounted(() => observer?.disconnect())
   border: 1px solid var(--border, #e5e7eb);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   z-index: 100;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
 }
+
+.toc-container::-webkit-scrollbar { width: 4px; }
+.toc-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
 
 .toc-title {
   font-size: 0.9rem;
@@ -110,45 +157,24 @@ onUnmounted(() => observer?.disconnect())
   color: var(--text-primary, #333);
 }
 
-.toc-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+.toc-list { padding: 0; }
 
-/* ✅ 核心：完全手写的链接样式，模仿 MDUI 但完全可控 */
-.toc-link {
-  display: block;
-  padding: 6px 12px;
+.toc-item {
   font-size: 0.85rem;
-  color: #FFFFFF; /* 默认灰色 */
-  text-decoration: none;
-  border-radius: 6px;
+  height: 32px;
+  transition: all 0.2s;
   cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ✅ 激活状态：紫色文字，无背景 */
-.toc-link.active {
-  color: #6750A4 !important; /* 强制紫色 */
-  font-weight: 700;
-}
-
-/* 悬停效果 */
-.toc-link:hover {
-  color: #6750A4;
-  background-color: rgba(156, 39, 176, 0.05);
+  display: flex !important;
+  align-items: center !important;
+  /* 默认颜色由 JS 控制 */
 }
 
 /* 层级缩进 */
-.level-1 { padding-left: 12px; }
-.level-2 { padding-left: 24px; }
-.level-3 { padding-left: 36px; font-size: 0.8rem; }
-.level-4 { padding-left: 48px; font-size: 0.75rem; }
-.level-5, .level-6 { padding-left: 60px; font-size: 0.75rem; opacity: 0.7; }
+.level-1 { --mdui-list-item-padding-left: 12px; }
+.level-2 { --mdui-list-item-padding-left: 24px; }
+.level-3 { --mdui-list-item-padding-left: 36px; font-size: 0.8rem; }
+.level-4 { --mdui-list-item-padding-left: 48px; font-size: 0.75rem; }
+.level-5, .level-6 { --mdui-list-item-padding-left: 60px; font-size: 0.75rem; opacity: 0.7; }
 
 .toc-empty {
   font-size: 0.8rem;

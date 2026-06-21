@@ -14,7 +14,6 @@
   </div>
 
   <article class="post-content-wrapper">
-    <!-- ✅ 关键：给内容区添加点击监听，用于触发图片预览 -->
     <div
         v-if="currentPost"
         class="post-content markdown-body"
@@ -28,7 +27,7 @@
   <!-- 右侧悬浮目录 -->
   <ArticleToc v-if="currentPost" container-selector=".post-content" />
 
-  <!-- ✅ 全屏图片预览遮罩 -->
+  <!-- 全屏图片预览遮罩 -->
   <Transition name="fade">
     <div v-if="previewSrc" class="image-preview-overlay" @click="closePreview">
       <div class="preview-container" @click.stop>
@@ -55,7 +54,6 @@ const previewSrc = ref('')
 
 const handleImageClick = (e: MouseEvent) => {
   const target = e.target as HTMLElement
-  // 检查点击的是否是 IMG 标签
   if (target.tagName === 'IMG') {
     previewSrc.value = (target as HTMLImageElement).src
   }
@@ -117,7 +115,6 @@ const closePreview = () => {
   color: var(--text-primary, #333);
 }
 
-/* ✅ 核心：让所有图片自适应容器宽度 */
 .post-content :deep(img) {
   max-width: 100%;
   height: auto;
@@ -125,7 +122,7 @@ const closePreview = () => {
   margin: 24px auto;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  cursor: zoom-in; /* 提示用户可以点击放大 */
+  cursor: zoom-in;
   transition: transform 0.2s;
 }
 
@@ -133,7 +130,6 @@ const closePreview = () => {
   transform: scale(1.02);
 }
 
-/* 标题锚点偏移 */
 .post-content :deep(h1),
 .post-content :deep(h2),
 .post-content :deep(h3),
@@ -146,10 +142,7 @@ const closePreview = () => {
 /* --- 图片预览遮罩样式 --- */
 .image-preview-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  top: 0; left: 0; width: 100vw; height: 100vh;
   background: rgba(0, 0, 0, 0.9);
   backdrop-filter: blur(5px);
   z-index: 2000;
@@ -174,7 +167,6 @@ const closePreview = () => {
   object-fit: contain;
   border-radius: 4px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  cursor: default;
 }
 
 .preview-hint {
@@ -183,21 +175,10 @@ const closePreview = () => {
   font-size: 0.9rem;
 }
 
-/* 淡入淡出动画 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-/* --- 响应式 --- */
 @media (max-width: 1200px) {
-  .post-content-wrapper {
-    padding-right: 20px;
-  }
+  .post-content-wrapper { padding-right: 20px; }
 }
 </style>
