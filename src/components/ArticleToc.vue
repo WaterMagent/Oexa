@@ -18,7 +18,7 @@
 
 <script setup lang="ts">
 // ... script 部分保持不变，无需任何修改 ...
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const props = defineProps<{
