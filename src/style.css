@@ -36,3 +36,12 @@ body, #app {
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
+/* 确保所有 markdown 渲染出的图片都不会溢出 */
+.post-content img {
+  max-width: 100%;       /* 👈 关键：最大宽度不超过父容器 */
+  height: auto;          /* 👈 关键：高度随宽度等比例缩放 */
+  display: block;        /* 👈 消除图片底部的微小空隙 */
+  margin: 16px auto;     /* 👈 居中显示，并留出上下间距 */
+  border-radius: 8px;    /* 👈 可选：给图片加个圆角，更美观 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* 👈 可选：加点阴影提升质感 */
+}
