@@ -1,0 +1,38 @@
+/* src/style.css */
+
+:root {
+  /* 深色背景配色 */
+  --bg-primary: #121212;       /* 主背景：深灰黑 */
+  --bg-secondary: #1e1e1e;     /* 次级背景：稍亮一点的灰 */
+
+  --text-primary: #e0e0e0;     /* 主要文字：浅灰白 */
+  --text-secondary: #a0a0a0;   /* 次要文字：中灰 */
+
+  --accent: #bb86fc;           /* 强调色：淡紫色 */
+  --border: #333333;           /* 边框颜色 */
+
+  font-family: system-ui, -apple-system, sans-serif;
+  color-scheme: dark;          /* 告诉浏览器这是深色模式 */
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+body, #app {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
