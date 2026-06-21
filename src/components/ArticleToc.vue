@@ -43,26 +43,22 @@ const setupIntersectionObserver = () => {
 
   observer = new IntersectionObserver(
       (entries) => {
-        // ✅ 1. 明确指定类型为 HTMLElement | null
-        let topElement: HTMLElement | null = null
+        let topElement: Element | null = null // 👈 先定义为 Element
         let minTop = Infinity
 
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            // ✅ 2. 将 entry.target 断言为 HTMLElement
-            const target = entry.target as HTMLElement
-            const rect = target.getBoundingClientRect()
-
+            const rect = entry.target.getBoundingClientRect()
             if (rect.top < window.innerHeight / 2 && rect.top < minTop) {
               minTop = rect.top
-              topElement = target
+              topElement = entry.target
             }
           }
         })
 
-        // ✅ 3. 此时 TypeScript 知道 topElement 是 HTMLElement，可以安全访问 .id
-        if (topElement) {
-          activeId.value = topElement.id
+        // ✅ 关键修复：在这里进行类型转换和检查
+        if (topElement && 'id' in topElement) {
+          activeId.value = (topElement as HTMLElement).id
         }
       },
       {
