@@ -8,8 +8,7 @@ slug: about
 # Hi, I'm Baumkuchen
 
 ## 技术栈
-- Vue 3 + Vite 8
-- TypeScript
+- SvelteKit + TypeScript
 - MDUI 组件库
 - 剩下的请自行查看源码
 
