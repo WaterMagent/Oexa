@@ -52,6 +52,24 @@ const recentPosts = allPosts.slice(0, 3);
 	</div>
 </Layout>
 
+<script>
+	const list = document.querySelector('.post-list');
+	if (list) {
+		list.addEventListener('mouseover', (e) => {
+			const card = e.target.closest('mdui-card');
+			if (!card || card.dataset.prefetched) return;
+			const m = card.getAttribute('onclick')?.match(/'([^']+)'/);
+			if (m) {
+				const link = document.createElement('link');
+				link.rel = 'prefetch';
+				link.href = m[1];
+				document.head.appendChild(link);
+				card.dataset.prefetched = '1';
+			}
+		});
+	}
+</script>
+
 <style>
 	.welcome-container {
 		max-width: 800px;

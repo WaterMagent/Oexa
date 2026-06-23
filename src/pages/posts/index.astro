@@ -42,6 +42,13 @@ const allPosts = allModules
 <script>
 	import { navigate } from 'astro:transitions/client';
 
+	function prefetchPage(url) {
+		const link = document.createElement('link');
+		link.rel = 'prefetch';
+		link.href = url;
+		document.head.appendChild(link);
+	}
+
 	const pageSize = 5;
 	let searchQuery = '';
 	let currentPage = 1;
@@ -93,8 +100,10 @@ const allPosts = allModules
 				html += `<p class="excerpt" style="margin:8px 0 0;color:var(--text-secondary)">点击查看详情...</p></div>`;
 
 				cardEl.innerHTML = html;
+				const slug = post.slug;
+				cardEl.addEventListener('mouseenter', () => prefetchPage(`/posts/${slug}`), { once: true });
 				cardEl.addEventListener('click', () => {
-					navigate(`/posts/${post.slug}`);
+					navigate(`/posts/${slug}`);
 				});
 				grid.appendChild(cardEl);
 			});
