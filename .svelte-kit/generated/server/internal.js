@@ -26,7 +26,7 @@ export const options = {
 		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\n<html lang=\"zh-CN\" class=\"mdui-theme-dark\">\n\t<head>\n\t\t<meta charset=\"utf-8\" />\n\t\t<link rel=\"icon\" href=\"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>\" />\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n\t\t<link\n\t\t\thref=\"https://fonts.googleapis.com/icon?family=Material+Icons\"\n\t\t\trel=\"stylesheet\"\n\t\t/>\n\t\t<link\n\t\t\thref=\"https://fonts.googleapis.com/icon?family=Material+Icons+Outlined\"\n\t\t\trel=\"stylesheet\"\n\t\t/>\n\t\t<link\n\t\t\thref=\"https://fonts.googleapis.com/icon?family=Material+Icons+Round\"\n\t\t\trel=\"stylesheet\"\n\t\t/>\n\t\t" + head + "\n\t</head>\n\t<body>\n\t\t<div style=\"display: contents\">" + body + "</div>\n\t</body>\n</html>\n",
 		error
 	},
-	version_hash: "6sqx7g"
+	version_hash: "1w1pink"
 };
 
 export async function get_hooks() {

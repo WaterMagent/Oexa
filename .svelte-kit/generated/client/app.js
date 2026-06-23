@@ -22,10 +22,10 @@ export const server_loads = [];
 
 export const dictionary = {
 		"/": [2],
-		"/about": [3],
-		"/archive": [4],
-		"/posts": [5],
-		"/posts/[slug]": [6]
+		"/about": [6],
+		"/archive": [5],
+		"/posts": [3],
+		"/posts/[slug]": [4]
 	};
 
 export const hooks = {

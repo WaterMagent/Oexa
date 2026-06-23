@@ -3,7 +3,7 @@
 
 	let info = $state(getSystemInfo());
 	let dashOffset = $state(0);
-	const circumference = 2 * Math.PI * 52;
+	const circumference = 2 * Math.PI * 62;
 
 	function updateClock() {
 		info = getSystemInfo();
@@ -26,15 +26,15 @@
 			<span class="date">{info.date}</span>
 		</div>
 
-		<svg class="progress-ring" width="120" height="120">
+		<svg class="progress-ring" width="140" height="140">
 			<circle
 				class="progress-ring__circle"
 				stroke="#bb86fc"
 				stroke-width="4"
 				fill="transparent"
-				r="52"
-				cx="60"
-				cy="60"
+				r="62"
+				cx="70"
+				cy="70"
 				stroke-dasharray={circumference}
 				stroke-dashoffset={dashOffset}
 			/>
@@ -53,8 +53,8 @@
 
 	.clock-face {
 		position: relative;
-		width: 120px;
-		height: 120px;
+		width: 140px;
+		height: 140px;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
