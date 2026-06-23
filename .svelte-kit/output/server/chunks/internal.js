@@ -713,7 +713,7 @@ var options = {
 		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\n<html lang=\"zh-CN\" class=\"mdui-theme-dark\">\n	<head>\n		<meta charset=\"utf-8\" />\n		<link rel=\"icon\" href=\"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>\" />\n		<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n		<link\n			href=\"https://fonts.googleapis.com/icon?family=Material+Icons\"\n			rel=\"stylesheet\"\n		/>\n		<link\n			href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Outlined\"\n			rel=\"stylesheet\"\n		/>\n		<link\n			href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Round\"\n			rel=\"stylesheet\"\n		/>\n		" + head + "\n	</head>\n	<body>\n		<div style=\"display: contents\">" + body + "</div>\n	</body>\n</html>\n",
 		error: error_template_default
 	},
-	version_hash: "25diet"
+	version_hash: "sclwam"
 };
 async function get_hooks() {
 	let handle;
