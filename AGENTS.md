@@ -7,7 +7,7 @@ A personal dark-themed blog built with **Astro 5**, **MDUI 2** (Material Design 
 | Command | Usage |
 |---------|-------|
 | `bun dev` | Start dev server (Astro) |
-| `bun build` | Static production build to `dist/` |
+| `bun build` | Static production build to `build/` |
 | `bun preview` | Preview the production build locally |
 
 No test runner, no linter, no type-check script configured.
