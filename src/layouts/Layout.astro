@@ -1,346 +1,199 @@
 ---
-import '../styles/app.css';
-import Clock from '../lib/components/Clock.astro';
-import { ViewTransitions } from 'astro:transitions';
+import '../styles/global.css';
+import StartupAnimation from '../components/StartupAnimation.astro';
 
 export interface Props {
-	currentPath: string;
+  title?: string;
+  description?: string;
 }
 
-const { currentPath } = Astro.props;
+const { title = 'Baumkuchen', description = 'Baumkuchen 的个人博客' } = Astro.props;
+const currentPath = Astro.url.pathname;
 
 const navItems = [
-	{ name: 'home', label: '主页', icon: 'watch_later--outlined', path: '/' },
-	{ name: 'posts', label: '文章', icon: 'image--outlined', path: '/posts' },
-	{ name: 'archive', label: '归档', icon: 'library_music--outlined', path: '/archive' }
+  { href: '/', label: '首页', icon: '⌂' },
+  { href: '/blog', label: '博客', icon: '✎' },
+  { href: '/about', label: '关于', icon: '◎' },
+  { href: '/guestbook', label: '留言', icon: '✉' },
 ];
-
-function getActiveValue(path: string): string | undefined {
-	if (path === '/') return 'home';
-	for (const item of navItems) {
-		if (item.name !== 'home' && path.startsWith('/' + item.name)) {
-			return item.name;
-		}
-	}
-	return undefined;
-}
-
-const activeValue = getActiveValue(currentPath);
 ---
 
 <!doctype html>
-<html lang="zh-CN" class="mdui-theme-dark" style="background-color:#121212;color-scheme:dark">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<link
-			href="https://fonts.googleapis.com/icon?family=Material+Icons"
-			rel="stylesheet"
-		/>
-		<link
-			href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined"
-			rel="stylesheet"
-		/>
-		<link
-			href="https://fonts.googleapis.com/icon?family=Material+Icons+Round"
-			rel="stylesheet"
-		/>
-		<ViewTransitions />
-	</head>
-	<body style="background-color:#121212">
-		<div id="splash">
-			<div class="splash-avatar-wrap">
-				<div class="splash-avatar-wrapper">
-					<img class="splash-avatar" src="https://avatars.githubusercontent.com/u/195563565?v=4" alt="avatar" />
-				</div>
-			</div>
-			<div class="splash-bottom">
-				<div class="splash-path" id="splash-path"></div>
-				<mdui-linear-progress id="splash-progress"></mdui-linear-progress>
-			</div>
-		</div>
-		<div class="page-layout">
-			<mdui-navigation-rail class="my-sidebar" value={activeValue || undefined} transition:persist>
-				<div class="sidebar-header" onclick="__nav('/about')" title="关于我">
-					<mdui-avatar src="https://avatars.githubusercontent.com/u/195563565?v=4" size="large"></mdui-avatar>
-				</div>
-
-				{
-					navItems.map((item) => (
-						<mdui-navigation-rail-item
-							icon={item.icon}
-							value={item.name}
-							onclick={`__nav('${item.path}')`}
-						>
-							{item.label}
-						</mdui-navigation-rail-item>
-					))
-				}
-			</mdui-navigation-rail>
-
-			<div class="clock-corner" transition:persist>
-				<Clock />
-			</div>
-
-			<main class="main-content">
-				<slot />
-			</main>
-		</div>
-
-		<mdui-navigation-bar class="bottom-nav" value={activeValue || undefined} label-visibility="labeled" transition:persist>
-			{
-				navItems.map((item) => (
-					<mdui-navigation-bar-item
-						icon={item.icon}
-						value={item.name}
-						onclick={`__nav('${item.path}')`}
-					>
-						{item.label}
-					</mdui-navigation-bar-item>
-				))
-			}
-			<mdui-navigation-bar-item value="about" onclick="__nav('/about')">
-				<mdui-avatar slot="icon" src="https://avatars.githubusercontent.com/u/195563565?v=4" size="x-small"></mdui-avatar>
-				关于
-			</mdui-navigation-bar-item>
-		</mdui-navigation-bar>
-	</body>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} — Baumkuchen</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <StartupAnimation />
+    <div class="page-layout">
+      <nav class="sidebar">
+        <a href="/" class="sidebar-avatar-link">
+          <img
+            class="sidebar-avatar"
+            src="https://avatars.githubusercontent.com/u/195563565?v=4"
+            alt="Baumkuchen"
+            width="40"
+            height="40"
+          />
+        </a>
+        <div class="sidebar-nav">
+          {navItems.map((item) => (
+            <a
+              href={item.href}
+              class:list={{
+                'sidebar-item': true,
+                active: currentPath === item.href || (item.href !== '/' && currentPath.startsWith(item.href)),
+              }}
+              title={item.label}
+            >
+              <span class="sidebar-icon">{item.icon}</span>
+              <span class="sidebar-label">{item.label}</span>
+            </a>
+          ))}
+        </div>
+      </nav>
+      <main class="main-content">
+        <div class="content-area">
+          <slot />
+        </div>
+      </main>
+    </div>
+    <footer class="footer">
+      <p>&copy; {new Date().getFullYear()} Baumkuchen. 保留所有权利。</p>
+    </footer>
+  </body>
 </html>
 
 <style is:global>
-	@import 'mdui/mdui.css';
+  .page-layout {
+    display: flex;
+    min-height: 100vh;
+  }
 
-	/* View transitions: disable all — only main-content is named, and its animation is off */
-	::view-transition-old(root),
-	::view-transition-new(root) {
-		animation: none;
-		opacity: 1;
-	}
-	::view-transition-old(main-content) {
-		animation: none;
-		opacity: 1;
-	}
-	::view-transition-new(main-content) {
-		animation: none;
-		opacity: 1;
-	}
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 72px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 0;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border);
+    z-index: 100;
+    gap: 0.5rem;
+  }
 
-	.page-layout {
-		display: flex;
-		min-height: 100vh;
-	}
-	.my-sidebar {
-		width: 80px;
-		background-color: var(--bg-secondary);
-		display: flex;
-		flex-direction: column;
-		order: 1;
-	}
-	.sidebar-header {
-		height: 64px;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		margin-bottom: 16px;
-		cursor: pointer;
-	}
-	.main-content {
-		flex: 1;
-		background-color: var(--bg-primary);
-		overflow-y: auto;
-		view-transition-name: main-content;
-	}
-	.clock-corner {
-		position: fixed;
-		top: 16px;
-		left: 16px;
-		z-index: 200;
-	}
+  .sidebar-avatar-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    text-decoration: none !important;
+  }
 
-	.bottom-nav {
-		visibility: hidden;
-		opacity: 0;
-		pointer-events: none;
-		--z-index: 500;
-		--shape-corner: 0;
-		background-color: var(--bg-secondary);
-		transition: opacity 0.2s;
-	}
+  .sidebar-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
 
-	@media (max-width: 768px) {
-		.my-sidebar {
-			display: none;
-		}
-		.clock-corner {
-			display: none;
-		}
-		.main-content {
-			padding-bottom: 72px;
-		}
-		.bottom-nav {
-			visibility: visible;
-			opacity: 1;
-			pointer-events: auto;
-		}
-	}
+  .sidebar-avatar:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
 
-	#splash {
-		position: fixed;
-		inset: 0;
-		z-index: 9999;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		background-color: var(--bg-primary);
-		transition: opacity 0.4s ease;
-	}
-	.splash-avatar-wrap {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.splash-avatar-wrapper {
-		position: relative;
-		width: 240px;
-		height: 240px;
-	}
-	.splash-avatar {
-		width: 100%;
-		height: 100%;
-		border-radius: 50%;
-		object-fit: cover;
-		display: block;
-		animation: splash-pulse 1.5s ease-in-out infinite;
-	}
-	@keyframes splash-pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.7; }
-	}
-	.splash-bottom {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 16px;
-		padding-bottom: 60px;
-		width: 100%;
-	}
-	.splash-path {
-		font-size: 1.2rem;
-		color: var(--text-secondary);
-		font-family: 'Fira Code', 'Consolas', monospace;
-		height: 1.5em;
-	}
-	#splash-progress {
-		width: 80vw;
-		max-width: 600px;
-	}
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 100%;
+    padding: 0 0.5rem;
+  }
+
+  .sidebar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0.6rem 0;
+    border-radius: 8px;
+    text-decoration: none !important;
+    color: var(--text-dim) !important;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .sidebar-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-bright) !important;
+  }
+
+  .sidebar-item.active {
+    background: var(--bg-hover);
+    color: var(--accent) !important;
+  }
+
+  .sidebar-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+
+  .sidebar-label {
+    font-size: 0.65rem;
+    line-height: 1;
+  }
+
+  .main-content {
+    flex: 1;
+    margin-left: 96px;
+    min-height: 100vh;
+    padding: 0 1.5rem;
+  }
+
+  .content-area {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .footer {
+    margin-top: 5rem;
+    padding: 2rem 1.5rem;
+    border-top: 1px solid var(--border);
+    margin-left: 96px;
+    display: flex;
+    justify-content: center;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 600px) {
+    .sidebar {
+      width: 56px;
+    }
+
+    .sidebar-label {
+      display: none;
+    }
+
+    .main-content {
+      margin-left: 72px;
+    }
+
+    .footer {
+      margin-left: 72px;
+    }
+  }
 </style>
-
-<script>
-	import 'mdui';
-	import 'mdui/components/icon.js';
-	import { navigate } from 'astro:transitions/client';
-
-	window.__nav = navigate;
-
-	// Splash screen — only on external entry
-	const splashPaths = [
-		'/src/layouts/Layout.astro',
-		'/src/lib/components/ArticleToc.astro',
-		'/src/lib/components/Clock.astro',
-		'/src/lib/utils/markdown.ts',
-		'/src/lib/utils/posts.ts',
-		'/src/lib/utils/widget.ts',
-		'/src/pages/404.astro',
-		'/src/pages/about/index.astro',
-		'/src/pages/archive/index.astro',
-		'/src/pages/index.astro',
-		'/src/pages/posts/index.astro',
-		'/src/pages/posts/%5B...slug%5D.astro',
-		'/src/posts/about.md',
-		'/src/posts/ai.md',
-		'/src/posts/ai2.md',
-		'/src/posts/test.md',
-		'/src/posts/test2.md',
-		'/src/styles/app.css',
-	];
-
-	if (!window.__splashDone) {
-		const splash = document.getElementById('splash');
-		const pathEl = document.getElementById('splash-path');
-		if (splash && pathEl) {
-			const duration = 2000;
-			const fileInterval = duration / splashPaths.length;
-			let fileIdx = 0;
-
-			pathEl.textContent = splashPaths[0];
-
-			const tick = () => {
-				fileIdx++;
-				if (fileIdx < splashPaths.length) {
-					pathEl.textContent = splashPaths[fileIdx];
-					setTimeout(tick, fileInterval);
-				} else {
-					splash.style.opacity = '0';
-					setTimeout(() => { splash.style.display = 'none'; }, 400);
-					window.__splashDone = true;
-				}
-			};
-
-			setTimeout(tick, fileInterval);
-		}
-	} else {
-		const splash = document.getElementById('splash');
-		if (splash) splash.style.display = 'none';
-	}
-
-	// Clock — only init once (element is preserved via transition:persist)
-	if (!window.__clockId) {
-		const circumference = 2 * Math.PI * 62;
-		const clockRing = document.getElementById('clock-ring');
-		const clockTime = document.getElementById('clock-time');
-		const clockDate = document.getElementById('clock-date');
-
-		if (clockRing) clockRing.setAttribute('stroke-dasharray', circumference);
-
-		function updateClock() {
-			const now = new Date();
-			const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
-			const dashOffset = circumference - (seconds / 60) * circumference;
-			if (clockRing) clockRing.setAttribute('stroke-dashoffset', dashOffset);
-			if (clockTime) clockTime.textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
-			if (clockDate) clockDate.textContent = now.toLocaleDateString('zh-CN');
-		}
-
-		updateClock();
-		window.__clockId = setInterval(updateClock, 100);
-	}
-
-	function updateActiveNav() {
-		const path = window.location.pathname;
-		let value = '';
-		if (path === '/') {
-			value = 'home';
-		} else if (path.startsWith('/posts')) {
-			value = 'posts';
-		} else if (path.startsWith('/archive')) {
-			value = 'archive';
-		}
-		const rail = document.querySelector('mdui-navigation-rail');
-		if (rail) rail.value = value;
-		const navBar = document.querySelector('mdui-navigation-bar');
-		if (navBar) navBar.value = value;
-	}
-
-	document.addEventListener('astro:page-load', () => {
-		updateActiveNav();
-		if (window.__splashDone) {
-			const splash = document.getElementById('splash');
-			if (splash) splash.style.display = 'none';
-		}
-	});
-	updateActiveNav();
-</script>

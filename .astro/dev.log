@@ -1,0 +1,59 @@
+{"message":"connected.","label":"vite","level":"info"}
+{"message":"Generated 0ms","label":"types","level":"info"}
+{"message":"connected.","label":"vite","level":"info"}
+{"message":"Re-optimizing dependencies because vite config has changed","label":"vite","level":"info"}
+{"message":" astro  v7.0.2 ready in 851 ms\n┃ Local    http://localhost:4321/\n┃ Network  http://192.168.8.200:4321/","label":"SKIP_FORMAT","level":"info"}
+{"message":"watching for file changes...","label":null,"level":"info"}
+{"message":"[200] /about 17ms","label":null,"level":"info"}
+{"message":"[200] /about 2ms","label":null,"level":"info"}
+{"message":"[200] / 11ms","label":null,"level":"info"}
+{"message":"[200] / 2ms","label":null,"level":"info"}
+{"message":"[200] / 2ms","label":null,"level":"info"}
+{"message":"[200] /blog 13ms","label":null,"level":"info"}
+{"message":"[200] /about 2ms","label":null,"level":"info"}
+{"message":"[200] /about 2ms","label":null,"level":"info"}
+{"message":"[200] /about 15ms","label":null,"level":"info"}
+{"message":"[200] /about 8ms","label":null,"level":"info"}
+{"message":"/src/layouts/Layout.astro?astro&type=style&index=0&lang.css","label":"watch","level":"info"}
+{"message":"[200] /about 5ms","label":null,"level":"info"}
+{"message":"[200] / 2ms","label":null,"level":"info"}
+{"message":"[200] /blog 7ms","label":null,"level":"info"}
+{"message":"[200] /about 2ms","label":null,"level":"info"}
+{"message":"[200] / 7ms","label":null,"level":"info"}
+{"message":"[200] /blog 3ms","label":null,"level":"info"}
+{"message":"[200] /building-with-astro/ 6ms","label":null,"level":"info"}
+{"message":"/src/layouts/Layout.astro?astro&type=style&index=0&lang.css","label":"watch","level":"info"}
+{"message":"[200] /building-with-astro/ 16ms","label":null,"level":"info"}
+{"message":"/src/layouts/Layout.astro?astro&type=style&index=0&lang.css","label":"watch","level":"info"}
+{"message":"[200] /about 6ms","label":null,"level":"info"}
+{"message":"[200] / 6ms","label":null,"level":"info"}
+{"message":"[200] /blog 8ms","label":null,"level":"info"}
+{"message":"[200] /hello-world 6ms","label":null,"level":"info"}
+{"message":"[200] /about 2ms","label":null,"level":"info"}
+{"message":"[200] / 3ms","label":null,"level":"info"}
+{"message":"[200] /blog 2ms","label":null,"level":"info"}
+{"message":"[200] /building-with-astro/ 6ms","label":null,"level":"info"}
+{"message":"[200] / 4ms","label":null,"level":"info"}
+{"message":"[200] /blog 3ms","label":null,"level":"info"}
+{"message":"[200] /hello-world/ 5ms","label":null,"level":"info"}
+{"message":"[200] / 2ms","label":null,"level":"info"}
+{"message":"[200] /about 2ms","label":null,"level":"info"}
+{"message":"[200] / 9ms","label":null,"level":"info"}
+{"message":"[200] / 2ms","label":null,"level":"info"}
+{"message":"[200] / 2ms","label":null,"level":"info"}
+{"message":"[200] / 3ms","label":null,"level":"info"}
+{"message":"[200] / 3ms","label":null,"level":"info"}
+{"message":"/src/layouts/Layout.astro?astro&type=style&index=0&lang.css","label":"watch","level":"info"}
+{"message":"[200] / 22ms","label":null,"level":"info"}
+{"message":"[200] /guestbook 14ms","label":null,"level":"info"}
+{"message":"[200] /guestbook 2ms","label":null,"level":"info"}
+{"message":"src/pages/guestbook.astro","label":"watch","level":"info"}
+{"message":"[200] /guestbook 6ms","label":null,"level":"info"}
+{"message":"[200] /guestbook 2ms","label":null,"level":"info"}
+{"message":"[200] /guestbook 7ms","label":null,"level":"info"}
+{"message":"src/pages/guestbook.astro","label":"watch","level":"info"}
+{"message":"[200] /guestbook 12ms","label":null,"level":"info"}
+{"message":"[console.error] [giscus] An error occurred. Error message: \"giscus is not installed on this repository\". Please consider reporting this error at https://github.com/giscus/giscus/issues/new.","label":"vite","level":"error"}
+{"message":"src/pages/guestbook.astro","label":"watch","level":"info"}
+{"message":"[200] /guestbook 11ms","label":null,"level":"info"}
+{"message":"[200] /guestbook 2ms","label":null,"level":"info"}

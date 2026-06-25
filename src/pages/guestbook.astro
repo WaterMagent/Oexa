@@ -1,0 +1,136 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="留言板" description="用 GitHub 账号留下你的足迹">
+  <section class="guestbook fade-in">
+    <h1>留言板</h1>
+    <p class="guestbook-desc">用 GitHub 账号登录后即可留言，你的足迹会永久留在这里。</p>
+
+    <div id="guestbook-app">
+      <div class="loading-msg">加载留言组件中...</div>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  (() => {
+    const app = document.getElementById('guestbook-app');
+    if (!app) return;
+
+    const repo = 'baumkuchen/blog';
+    const issueTerm = 'guestbook';
+
+    // Check if Utterances already loaded
+    if (app.querySelector('.utterances')) return;
+
+    // Create the utterances container
+    const container = document.createElement('div');
+    container.className = 'guestbook-widget';
+    app.appendChild(container);
+
+    const script = document.createElement('script');
+    script.src = 'https://utteranc.es/client.js';
+    script.setAttribute('repo', repo);
+    script.setAttribute('issue-term', issueTerm);
+    script.setAttribute('label', 'guestbook');
+    script.setAttribute('theme', 'github-dark');
+    script.setAttribute('crossorigin', 'anonymous');
+    script.async = true;
+
+    script.onload = () => {
+      app.querySelector('.loading-msg')?.remove();
+    };
+
+    script.onerror = () => {
+      app.querySelector('.loading-msg')?.remove();
+      const err = document.createElement('div');
+      err.className = 'setup-guide';
+      err.innerHTML = `
+        <p class="setup-title">⚠️ 留言组件加载失败</p>
+        <p>请确保已经完成以下步骤：</p>
+        <ol>
+          <li>前往 <a href="https://github.com/apps/utterances" target="_blank" rel="noopener">github.com/apps/utterances</a> 点击 <strong>Install</strong></li>
+          <li>选择仓库 <code>${repo}</code>，点击 <strong>Install</strong></li>
+          <li>返回此页面刷新即可</li>
+        </ol>
+      `;
+      app.appendChild(err);
+    };
+
+    container.appendChild(script);
+  })();
+</script>
+
+<style is:global>
+  .guestbook {
+    padding: 2rem 0 4rem;
+  }
+
+  .guestbook h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.03em;
+  }
+
+  .guestbook-desc {
+    color: var(--text-dim);
+    margin-bottom: 2rem;
+    font-size: 1.05rem;
+  }
+
+  .loading-msg {
+    text-align: center;
+    color: var(--text-dim);
+    padding: 3rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .guestbook-widget {
+    min-height: 200px;
+  }
+
+  .guestbook-widget .utterances {
+    max-width: 100% !important;
+  }
+
+  .setup-guide {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 2rem;
+    line-height: 1.8;
+  }
+
+  .setup-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 0.8rem;
+  }
+
+  .setup-guide ol {
+    padding-left: 1.25rem;
+    color: var(--text);
+  }
+
+  .setup-guide li {
+    margin: 0.4rem 0;
+  }
+
+  .setup-guide code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--bg);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  .setup-guide a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+</style>

@@ -1,0 +1,149 @@
+<aside id="toc" class="toc">
+  <div class="toc-inner">
+    <h3 class="toc-title">目录</h3>
+    <nav class="toc-nav">
+      <ul id="toc-list" class="toc-list"></ul>
+    </nav>
+  </div>
+</aside>
+
+<style is:global>
+  .toc {
+    display: block;
+    position: fixed;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .toc-inner {
+    border-left: 1px solid var(--border);
+    padding-left: 1rem;
+  }
+
+  .toc-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+  }
+
+  .toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .toc-list li {
+    margin: 0;
+  }
+
+  .toc-link {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-decoration: none !important;
+    padding: 0.25rem 0;
+    line-height: 1.4;
+    transition: color 0.2s, border-color 0.2s;
+    border-left: 2px solid transparent;
+    margin-left: -1rem;
+    padding-left: 1rem;
+  }
+
+  .toc-link:hover {
+    color: var(--text-bright);
+  }
+
+  .toc-link.level-2 {
+    padding-left: 1.5rem;
+    margin-left: -1rem;
+  }
+
+  .toc-link.level-3 {
+    padding-left: 2rem;
+    margin-left: -1rem;
+    font-size: 0.75rem;
+  }
+
+  .toc-link.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+  }
+
+  .toc::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  @media (max-width: 1200px) {
+    .toc {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  (() => {
+    const article = document.querySelector('.blog-post .prose');
+    const tocList = document.getElementById('toc-list');
+    if (!article || !tocList) return;
+
+    const headings = article.querySelectorAll('h1, h2, h3');
+    if (headings.length < 2) {
+      document.getElementById('toc')?.remove();
+      return;
+    }
+
+    const items: { el: Element; link: HTMLLIElement }[] = [];
+
+    headings.forEach((h) => {
+      const id = h.textContent
+        ?.trim()
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\u4e00-\u9fff-]/g, '');
+      h.id = id || '';
+
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = `#${id}`;
+      a.textContent = h.textContent;
+      a.className = `toc-link level-${h.tagName.toLowerCase() === 'h1' ? '1' : h.tagName.toLowerCase() === 'h2' ? '2' : '3'}`;
+      li.appendChild(a);
+      tocList.appendChild(li);
+
+      items.push({ el: h, link: li });
+
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.getElementById(id);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          history.pushState(null, '', `#${id}`);
+        }
+      });
+    });
+
+    // Scroll spy
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            items.forEach((item) => {
+              const link = item.link.querySelector('.toc-link');
+              if (link) link.classList.toggle('active', item.el === entry.target);
+            });
+          }
+        });
+      },
+      { rootMargin: '-80px 0px -60% 0px' }
+    );
+
+    items.forEach((item) => observer.observe(item.el));
+  })();
+</script>

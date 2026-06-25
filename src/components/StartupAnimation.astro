@@ -1,0 +1,184 @@
+---
+// Startup animation — plays once on page load, then dismisses
+// State is persisted in sessionStorage so it only plays once per tab session
+---
+
+<style is:global>
+  #startup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    pointer-events: none;
+  }
+
+  #startup-overlay.dismissed {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+
+  #startup-overlay.hidden {
+    display: none;
+  }
+
+  /* Geometric decoration */
+  .startup-bg {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    animation: pulse-ring 3s ease-in-out infinite;
+  }
+
+  .startup-bg:nth-child(2) {
+    width: 400px;
+    height: 400px;
+    animation-delay: 0.5s;
+    border-color: var(--accent-glow);
+  }
+
+  .startup-bg:nth-child(3) {
+    width: 200px;
+    height: 200px;
+    animation-delay: 1s;
+  }
+
+  @keyframes pulse-ring {
+    0%, 100% { transform: scale(1); opacity: 0.15; }
+    50% { transform: scale(1.1); opacity: 0.4; }
+  }
+
+  .startup-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .startup-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    object-fit: cover;
+    opacity: 0;
+    animation: logoAppear 0.8s ease-out 0.2s forwards;
+    box-shadow: 0 0 40px var(--accent-glow);
+  }
+
+  @keyframes logoAppear {
+    from { opacity: 0; transform: scale(0.5) rotate(-20deg); }
+    to { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  .startup-name {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: -0.02em;
+    opacity: 0;
+    animation: nameReveal 0.8s ease-out 0.6s forwards;
+    background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  @keyframes nameReveal {
+    from { opacity: 0; transform: translateY(10px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .startup-tagline {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    opacity: 0;
+    animation: taglineReveal 0.6s ease-out 1s forwards;
+    font-family: var(--font-mono);
+  }
+
+  @keyframes taglineReveal {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Loading bar */
+  .startup-bar {
+    position: relative;
+    z-index: 1;
+    margin-top: 2rem;
+    width: 120px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    opacity: 0;
+    animation: taglineReveal 0.4s ease-out 1.2s forwards;
+  }
+
+  .startup-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
+    border-radius: 2px;
+    animation: barFill 1.2s ease-in-out 1.3s forwards;
+  }
+
+  @keyframes barFill {
+    0% { width: 0%; }
+    50% { width: 70%; }
+    100% { width: 100%; }
+  }
+</style>
+
+<div id="startup-overlay">
+  <div class="startup-bg"></div>
+  <div class="startup-bg"></div>
+  <div class="startup-bg"></div>
+  <div class="startup-content">
+    <img
+      class="startup-logo"
+      src="https://avatars.githubusercontent.com/u/195563565?v=4"
+      alt="Baumkuchen"
+      width="64"
+      height="64"
+    />
+    <div class="startup-name">Baumkuchen</div>
+    <div class="startup-tagline">代码 / 创造 / 重复</div>
+    <div class="startup-bar">
+      <div class="startup-bar-fill"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const overlay = document.getElementById('startup-overlay');
+    if (!overlay) return;
+
+    // Only play once per tab session
+    if (sessionStorage.getItem('startupShown')) {
+      overlay.classList.add('hidden');
+      return;
+    }
+
+    sessionStorage.setItem('startupShown', 'true');
+    overlay.style.pointerEvents = 'auto';
+
+    // Dismiss after animation completes (~2.5s total)
+    setTimeout(() => {
+      overlay.classList.add('dismissed');
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+      }, 800);
+    }, 2500);
+  })();
+</script>

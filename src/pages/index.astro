@@ -1,140 +1,261 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { parsePostsFromModules } from '../lib/utils/posts';
-
-const mdModules = import.meta.glob('/src/posts/*.md', {
-	eager: true,
-	query: '?raw',
-	import: 'default'
-}) as Record<string, string>;
-
-const allModules = parsePostsFromModules(mdModules);
-const allPosts = allModules
-	.filter((p) => p.type === 'post')
-	.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-const recentPosts = allPosts.slice(0, 3);
 ---
 
-<Layout currentPath="/">
-	<div class="welcome-container">
-		<div class="hero-section">
-			<h1>欢迎来到 Baumkuchen 的博客</h1>
-			<p>没有要写的</p>
-		</div>
+<Layout title="首页">
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-avatar-wrapper fade-in stagger-1">
+        <img
+          class="hero-avatar"
+          src="https://avatars.githubusercontent.com/u/195563565?v=4"
+          alt="Baumkuchen"
+          width="96"
+          height="96"
+        />
+        <span class="hero-status"></span>
+      </div>
+      <h1 class="hero-title fade-in stagger-2">
+        你好，我是 <span class="gradient-text">Baumkuchen</span>
+      </h1>
+      <p class="hero-subtitle fade-in stagger-3">
+        一个热爱写优雅代码、捣鼓酷项目的开发者，
+        偶尔也会写点东西记录一下。
+      </p>
+      <div class="hero-links fade-in stagger-4">
+        <a href="/blog" class="btn btn-primary">阅读博客</a>
+        <a href="/about" class="btn btn-secondary">关于我</a>
+      </div>
+    </div>
+  </section>
 
-		<div class="recent-posts">
-			<h2>最近更新</h2>
-			<div class="post-list">
-				{recentPosts.map((post) => (
-					<mdui-card
-						variant="outlined"
-						class="recent-card"
-						onclick={`__nav('/posts/${post.slug}')`}
-					>
-						{post.banner && (
-							<div class="recent-banner">
-								<img src={post.banner} alt={post.title} />
-							</div>
-						)}
-						<div class="card-content">
-							<h3>{post.title}</h3>
-							<p class="date">{post.date}</p>
-						</div>
-					</mdui-card>
-				))}
-			</div>
-
-			<div style="margin-top: 20px; text-align: center;">
-			<mdui-button variant="text" onclick="__nav('/posts')">查看所有文章 →</mdui-button>
-			</div>
-		</div>
-	</div>
+  <section class="featured fade-in">
+    <h2 class="section-title">最新文章</h2>
+    <div class="post-list">
+      <a href="/hello-world" class="post-card fade-in stagger-1">
+        <div class="card-banner">
+          <img src="https://picsum.photos/seed/hello/240/160" alt="" width="240" height="160" />
+        </div>
+        <div class="card-body">
+          <div class="post-meta">第一篇</div>
+          <h3 class="post-title">Hello World</h3>
+          <p class="post-desc">欢迎来到我的互联网小角落。</p>
+          <span class="post-read">阅读更多 →</span>
+        </div>
+      </a>
+      <a href="/building-with-astro" class="post-card fade-in stagger-2">
+        <div class="card-banner">
+          <img src="https://picsum.photos/seed/astro/240/160" alt="" width="240" height="160" />
+        </div>
+        <div class="card-body">
+          <div class="post-meta">Astro</div>
+          <h3 class="post-title">用 Astro 搭建博客</h3>
+          <p class="post-desc">为什么 Astro 是我做内容网站的首选框架。</p>
+          <span class="post-read">阅读更多 →</span>
+        </div>
+      </a>
+    </div>
+  </section>
 </Layout>
 
-<script>
-	const list = document.querySelector('.post-list');
-	if (list) {
-		list.addEventListener('mouseover', (e) => {
-			const card = e.target.closest('mdui-card');
-			if (!card || card.dataset.prefetched) return;
-			const m = card.getAttribute('onclick')?.match(/'([^']+)'/);
-			if (m) {
-				const link = document.createElement('link');
-				link.rel = 'prefetch';
-				link.href = m[1];
-				document.head.appendChild(link);
-				card.dataset.prefetched = '1';
-			}
-		});
-	}
-</script>
+<style is:global>
+  .hero {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 0;
+  }
 
-<style>
-	.welcome-container {
-		max-width: 800px;
-		margin: 0 auto;
-		padding: 32px;
-	}
+  .hero-content {
+    text-align: center;
+    max-width: 560px;
+  }
 
-	.hero-section {
-		text-align: center;
-		margin-bottom: 48px;
-	}
+  .hero-avatar-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 1.5rem;
+  }
 
-	.recent-posts h2 {
-		border-bottom: 2px solid var(--accent);
-		display: inline-block;
-		padding-bottom: 8px;
-		margin-bottom: 24px;
-	}
+  .hero-avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    object-fit: cover;
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
 
-	.post-list {
-		display: flex;
-		flex-direction: column;
-		gap: 16px;
-	}
+  .hero-avatar:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 40px var(--accent-glow);
+  }
 
-	.recent-card {
-		width: 100%;
-		display: block;
-		cursor: pointer;
-		transition: transform 0.2s, border-color 0.2s;
-	}
+  .hero-status {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #22c55e;
+    border: 2px solid var(--bg);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
 
-	.recent-card:hover {
-		transform: translateX(8px);
-		border-color: var(--accent);
-	}
+  @keyframes pulse-dot {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+  }
 
-	.card-content {
-		padding: 16px 24px;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
+  .hero-title {
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 0.8rem;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+  }
 
-	.recent-banner {
-		width: 100%;
-		height: 120px;
-		overflow: hidden;
-		border-radius: 12px 12px 0 0;
-	}
-	.recent-banner img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
-	}
+  .gradient-text {
+    background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
 
-	.card-content h3 {
-		margin: 0;
-		font-size: 1.1em;
-	}
+  .hero-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
 
-	.date {
-		color: var(--text-secondary);
-		font-size: 0.9em;
-		margin: 0;
-	}
+  .hero-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-decoration: none !important;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff !important;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  .btn-primary:hover {
+    background: #7b73ff;
+    box-shadow: 0 0 30px var(--accent-glow);
+    transform: translateY(-2px);
+  }
+
+  .btn-secondary {
+    background: var(--bg-card);
+    color: var(--text) !important;
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .featured {
+    padding: 3rem 0;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  .post-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .post-card {
+    display: flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: all 0.2s;
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+
+  .post-card:hover {
+    border-color: var(--accent);
+    background: var(--bg-hover);
+    transform: translateX(4px);
+  }
+
+  .card-banner {
+    width: 200px;
+    min-height: 160px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+
+  .card-banner img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .card-body {
+    flex: 1;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .post-meta {
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+  }
+
+  .post-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 0.3rem;
+  }
+
+  .post-desc {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+
+  .post-read {
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 500;
+  }
 </style>
