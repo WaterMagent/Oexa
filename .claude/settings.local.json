@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import json; data = json.load\\(open\\('/home/baumkuchen/blog/public/music-cache.json'\\)\\); print\\(f'Total songs in cache: {len\\(data\\)}'\\)\")",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('/home/baumkuchen/blog/public/music-cache.json'\\)\\); print\\(f'Songs in cache: {len\\(d\\)}'\\)\")",
+      "Bash(curl -s 'https://music.163.com/api/v3/playlist/detail?id=14292629226' -H 'Referer: https://music.163.com/')",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s 'https://music.163.com/api/song/detail?ids=%5B2156451301,1461713131,3330453733%5D' -H 'Referer: https://music.163.com/')",
+      "Bash(curl -s 'https://music.163.com/api/song/detail?ids=[2156451301]' -H 'Referer: https://music.163.com/')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'code: {d.get\\(\\\\\"code\\\\\"\\)}, songs: {len\\(d.get\\(\\\\\"songs\\\\\",[]\\)\\)}'\\)\")",
+      "Bash(curl -sv 'https://music.163.com/api/song/detail?ids=[2156451301]' -H 'Referer: https://music.163.com/' -H 'User-Agent: Mozilla/5.0')",
+      "Bash(curl -s https://music.163.com/api/v3/song/detail?ids=[2156451301,1461713131] -H 'Referer: https://music.163.com/' -H 'User-Agent: Mozilla/5.0 \\(X11; Linux x86_64\\) AppleWebKit/537.36' -w '\\\\nHTTP_CODE: %{http_code}\\\\n')",
+      "Bash(curl -s https://music.163.com/api/v3/song/detail?ids=[2156451301,1461713131] -H 'Referer: https://music.163.com/' -H 'Cookie: appver=1.5.2; os=pc;' -w '\\\\nHTTP_CODE: %{http_code}\\\\n')",
+      "Bash(curl -v https://music.163.com/api/song/detail?ids=%5B2156451301%5D -H 'Referer: https://music.163.com/' -H 'User-Agent: Mozilla/5.0 \\(X11; Linux x86_64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36')"
+    ]
+  }
+}

@@ -1,0 +1,113 @@
+---
+const segs = 60;
+const segsList = Array.from({ length: segs }, (_, i) => i);
+const cx = 50, cy = 50, r = 44;
+// Each segment angle
+const angleStep = 360 / segs;
+---
+
+<div class="dt-clock" id="dt-clock">
+  <svg class="dt-svg" viewBox="0 0 100 100">
+    <defs>
+      <linearGradient id="dfg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="var(--accent)" />
+        <stop offset="50%" stop-color="var(--accent-cyan)" />
+        <stop offset="100%" stop-color="var(--accent-secondary)" />
+      </linearGradient>
+    </defs>
+    <circle cx={cx} cy={cy} r={r} class="dt-bg" />
+    <circle cx={cx} cy={cy} r={r} class="dt-track" />
+
+    {segsList.map(i => {
+      const a1 = (i * angleStep - 90) * Math.PI / 180;
+      const a2 = ((i + 1) * angleStep - 90) * Math.PI / 180;
+      const x1 = cx + r * Math.cos(a1);
+      const y1 = cy + r * Math.sin(a1);
+      const x2 = cx + r * Math.cos(a2);
+      const y2 = cy + r * Math.sin(a2);
+      return <line x1={x1} y1={y1} x2={x2} y2={y2} class="dt-seg" id={`s${i}`} stroke-width="2.5" stroke-linecap="round" />;
+    })}
+  </svg>
+  <div class="dt-time" id="dt-time">--:--</div>
+</div>
+
+<style is:global>
+  .dt-clock {
+    position: fixed; top: 20px; right: 24px; z-index: 150;
+    width: 96px; height: 96px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .dt-svg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    filter: drop-shadow(0 2px 16px rgba(0,0,0,0.5));
+  }
+
+  .dt-track {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 2;
+  }
+
+  .dt-bg {
+    fill: rgba(10,10,20,0.75);
+    stroke: rgba(108,99,255,0.06);
+    stroke-width: 0.5;
+  }
+
+  .dt-seg {
+    fill: none;
+    stroke: var(--border);
+    opacity: 0.5;
+    transition: stroke 0.15s, opacity 0.15s;
+  }
+
+  .dt-seg.on {
+    stroke: var(--accent-cyan);
+    opacity: 1;
+    filter: drop-shadow(0 0 3px rgba(0, 240, 255, 0.3));
+  }
+
+  .dt-time {
+    position: relative; z-index: 1;
+    font-family: var(--font-mono);
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 12px rgba(0, 240, 255, 0.12);
+    line-height: 1;
+  }
+
+  @media (max-width: 600px) {
+    .dt-clock { width: 76px; height: 76px; top: 12px; right: 12px; }
+    .dt-time { font-size: 1rem; }
+  }
+</style>
+
+<script>
+  (() => {
+    var el = document.getElementById('dt-time');
+    if (!el) return;
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+    function tick() {
+      var now = new Date();
+      el.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+      var sec = now.getSeconds();
+      for (var i = 0; i < 60; i++) {
+        var seg = document.getElementById('s' + i);
+        if (seg) {
+          if (i < sec) seg.classList.add('on');
+          else seg.classList.remove('on');
+        }
+      }
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  })();
+</script>

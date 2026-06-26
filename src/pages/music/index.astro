@@ -1,40 +1,36 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-const playlistId = 14292629226;
+const cachePath = resolve(import.meta.dirname, '..', '..', '..', 'public', 'music-cache.json');
+const coverCachePath = resolve(import.meta.dirname, '..', '..', '..', 'public', 'music-cover.json');
 
-const res = await fetch(`https://music.163.com/api/v3/playlist/detail?id=${playlistId}`);
-const data = await res.json();
-const playlist = data.playlist;
-const trackIds: number[] = (playlist.trackIds || []).map((t: any) => t.id);
-const coverUrl = (playlist.coverImgUrl || '').replace('http://', 'https://');
-const totalTracks = playlist.trackCount || trackIds.length;
+interface Song { id: number; name: string; artists: string; album: string; cover: string; duration: number }
 
-// Fetch all song details at build time
-const BATCH_SIZE = 100;
-const allSongs: Array<{ id: number; name: string; artists: string; album: string; cover: string; duration: number }> = [];
+// Read songs from cache (populated by scripts/fetch-music.mjs)
+let allSongs: Song[] = [];
+try {
+  const r = JSON.parse(readFileSync(cachePath, 'utf-8'));
+  if (Array.isArray(r)) allSongs = r;
+} catch {}
 
-for (let i = 0; i < trackIds.length; i += BATCH_SIZE) {
-  const batch = trackIds.slice(i, i + BATCH_SIZE);
-  try {
-    const r = await fetch(`https://music.163.com/api/song/detail?ids=[${batch.join(',')}]`);
-    const d = await r.json();
-    if (d.songs) {
-      for (const s of d.songs) {
-        allSongs.push({
-          id: s.id,
-          name: s.name,
-          artists: (s.artists || []).map((a: any) => a.name).join(', '),
-          album: s.album?.name || '',
-          cover: ((s.album?.picUrl || '').replace('http://', 'https://')),
-          duration: s.duration || 0,
-        });
-      }
-    }
-  } catch { /* skip failed batch */ }
-}
+// Read cover from cache
+let coverUrl = '';
+let playlistName = '音乐推荐';
+let playCount = 0;
+let totalTracks = 0;
+try {
+  const c = JSON.parse(readFileSync(coverCachePath, 'utf-8'));
+  coverUrl = c.cover || '';
+  playlistName = c.name || '音乐推荐';
+  playCount = c.playCount || 0;
+  totalTracks = c.totalCount || allSongs.length;
+} catch {}
 
-const pageSize = 100;
+if (totalTracks === 0) totalTracks = allSongs.length;
+
+const pageSize = 50;
 const totalPages = Math.ceil(allSongs.length / pageSize);
 
 function fmt(ms: number) {
@@ -47,7 +43,7 @@ function fmt(ms: number) {
   <section class="music-page fade-in">
     <div class="music-header fade-in stagger-1">
       <div class="music-cover-wrap">
-        <img class="music-cover" src={coverUrl} alt={playlist.name} width="120" height="120" />
+        <img class="music-cover" src={coverUrl} alt={playlistName} width="120" height="120" />
         <span class="music-cover-ring"></span>
       </div>
       <div class="music-info">
@@ -56,11 +52,17 @@ function fmt(ms: number) {
           音乐推荐
         </h1>
         <p class="music-meta">
-          <span class="music-meta-tag">{allSongs.length} 首歌曲</span>
-          <span class="music-meta-tag">{playlist.playCount} 次播放</span>
+          <span class="music-meta-tag">{totalTracks || allSongs.length} 首歌曲</span>
+          <span class="music-meta-tag">{playCount} 次播放</span>
         </p>
       </div>
     </div>
+
+    {allSongs.length < totalTracks && (
+      <div class="music-warning fade-in stagger-2">
+        ⚠️ 缓存不完整：{allSongs.length} / {totalTracks} 首。运行 <code>node scripts/fetch-music.mjs</code> 拉取全部歌曲。
+      </div>
+    )}
 
     <div class="music-controls fade-in stagger-2">
       <div class="music-search">
@@ -96,7 +98,7 @@ function fmt(ms: number) {
 
 <script>
   (() => {
-    const pageSize = 100;
+    const pageSize = 50;
     const allItems = Array.from(document.querySelectorAll('.music-item'));
     let currentPage = 1;
 
@@ -277,4 +279,14 @@ function fmt(ms: number) {
   }
 
   .music-empty { text-align: center; padding: 3rem 0; color: var(--text-dim); font-size: 0.9rem; }
+
+  .music-warning {
+    padding: 0.65rem 1rem; margin-bottom: 1rem; border-radius: 8px;
+    background: rgba(255, 193, 7, 0.08); border: 1px solid rgba(255, 193, 7, 0.25);
+    color: #ffc107; font-size: 0.8rem; text-align: center;
+  }
+  .music-warning code {
+    background: rgba(255, 193, 7, 0.12); padding: 1px 6px; border-radius: 3px;
+    font-family: var(--font-mono); font-size: 0.75rem;
+  }
 </style>

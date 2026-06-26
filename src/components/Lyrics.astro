@@ -1,0 +1,125 @@
+---
+---
+
+<div class="lyrics-card" id="lyrics-card">
+  <div class="lyrics-icon">♫</div>
+  <div class="lyrics-text" id="lyrics-text"></div>
+</div>
+
+<style is:global>
+  .lyrics-card {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 200;
+    max-width: 240px;
+    padding: 0.6rem 0.8rem;
+    background: rgba(8, 8, 16, 0.85);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    align-items: flex-start;
+    gap: 0.4rem;
+    pointer-events: none;
+  }
+
+  .lyrics-card.active { display: flex; }
+
+  .lyrics-icon {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--accent-cyan);
+    line-height: 1;
+    margin-top: 1px;
+  }
+
+  .lyrics-text {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--text-bright);
+    word-break: break-word;
+    min-height: 1.2em;
+  }
+
+  @media (max-width: 600px) {
+    .lyrics-card { max-width: 160px; bottom: 12px; right: 12px; padding: 0.4rem 0.6rem; }
+    .lyrics-text { font-size: 0.7rem; }
+  }
+</style>
+
+<script>
+  (() => {
+    var card = document.getElementById('lyrics-card');
+    var textEl = document.getElementById('lyrics-text');
+    var audio = document.getElementById('global-audio');
+    if (!card || !textEl || !audio) return;
+
+    var lines = [];
+    var currentIdx = -1;
+
+    function parseLRC(lrc) {
+      var result = [];
+      var re = /\[(\d+):(\d+(?:\.\d+)?)\](.*)/g;
+      var m;
+      while ((m = re.exec(lrc)) !== null) {
+        var text = m[3].trim();
+        if (text) {
+          result.push({ time: parseInt(m[1]) * 60 + parseFloat(m[2]), text: text });
+        }
+      }
+      result.sort(function(a, b) { return a.time - b.time; });
+      return result;
+    }
+
+    function loadLyrics(id) {
+      lines = [];
+      currentIdx = -1;
+      textEl.textContent = '';
+      card.classList.remove('active');
+      var saved = sessionStorage.getItem('gp-lyrics');
+      if (!saved) return;
+      lines = parseLRC(saved);
+      if (lines.length === 0) return;
+      card.classList.add('active');
+      updateLine();
+    }
+
+    function updateLine() {
+      if (!audio || lines.length === 0) return;
+      var t = audio.currentTime;
+      var idx = -1;
+      for (var i = lines.length - 1; i >= 0; i--) {
+        if (t >= lines[i].time) { idx = i; break; }
+      }
+      if (idx !== currentIdx) {
+        currentIdx = idx;
+        textEl.textContent = idx >= 0 ? lines[idx].text : '';
+      }
+    }
+
+    function checkSong() {
+      var match = audio.src.match(/\/outer\/url\?id=(\d+)/);
+      if (match) {
+        loadLyrics(match[1]);
+        // Also poll sessionStorage for newly fetched lyrics
+        var poll = setInterval(function() {
+          var saved = sessionStorage.getItem('gp-lyrics');
+          if (saved && lines.length === 0) {
+            lines = parseLRC(saved);
+            if (lines.length > 0) { card.classList.add('active'); updateLine(); clearInterval(poll); }
+          }
+        }, 200);
+        setTimeout(function() { clearInterval(poll); }, 10000);
+      }
+    }
+
+    audio.addEventListener('play', checkSong);
+    audio.addEventListener('loadedmetadata', checkSong);
+    audio.addEventListener('timeupdate', updateLine);
+    audio.addEventListener('ended', function() { card.classList.remove('active'); });
+    checkSong();
+  })();
+</script>
