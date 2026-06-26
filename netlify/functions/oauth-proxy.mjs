@@ -1,7 +1,8 @@
-// Netlify Function: OAuth proxy for GitHub Device Flow
-// Proxies requests from the browser to GitHub to avoid CORS issues.
+// Netlify Function: Proxy for GitHub OAuth + API calls
+// Avoids CORS issues by routing requests through Netlify's servers.
 
-const GITHUB_BASE = 'https://github.com/login';
+const GITHUB_OAUTH = 'https://github.com/login';
+const GITHUB_API = 'https://api.github.com';
 
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -9,26 +10,40 @@ export const handler = async (event) => {
   }
 
   try {
-    const { endpoint, ...params } = JSON.parse(event.body);
+    const { proxy, url, method, headers, body } = JSON.parse(event.body);
 
-    if (!endpoint) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'Missing endpoint' }) };
+    let targetUrl;
+    let reqHeaders = { 'Accept': 'application/json' };
+    let reqBody;
+
+    if (proxy === 'oauth') {
+      targetUrl = `${GITHUB_OAUTH}/${url}`;
+      reqBody = new URLSearchParams(body);
+    } else if (proxy === 'api') {
+      targetUrl = `${GITHUB_API}${url}`;
+      if (headers) Object.assign(reqHeaders, headers);
+      reqBody = body ? JSON.stringify(body) : undefined;
+      if (body) reqHeaders['Content-Type'] = 'application/json';
+    } else {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Invalid proxy target' }) };
     }
 
-    const url = `${GITHUB_BASE}/${endpoint}`;
-    const body = new URLSearchParams(params);
+    const opts = {
+      method: method || 'POST',
+      headers: reqHeaders,
+    };
+    if (reqBody) opts.body = reqBody;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Accept': 'application/json' },
-      body,
-    });
+    const res = await fetch(targetUrl, opts);
+    const text = await res.text();
 
-    const data = await res.json();
+    // Try to parse as JSON, fall back to text
+    let data;
+    try { data = JSON.parse(text); } catch { data = text; }
 
     return {
       statusCode: res.status,
-      body: JSON.stringify(data),
+      body: JSON.stringify({ data, status: res.status }),
     };
   } catch (err) {
     return {

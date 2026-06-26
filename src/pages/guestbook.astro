@@ -68,7 +68,6 @@ import Layout from '../layouts/Layout.astro';
 (() => {
   const OWNER = 'baumkuchen';
   const REPO = 'blog';
-  const ISSUE_NUM = 1;
 
   // DOM refs
   const messageListEl = document.getElementById('message-list');
@@ -93,6 +92,22 @@ import Layout from '../layouts/Layout.astro';
   let currentDeviceCode = null;
   let currentClientId = '';
   let pollTimer = null;
+  let guestbookIssueNum = null;
+
+  // --- Proxy helper — routes all GitHub calls through Netlify Function ---
+  async function proxy(endpoint, opts = {}) {
+    const res = await fetch('/.netlify/functions/oauth-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proxy: 'api', url: endpoint, ...opts }),
+    });
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
+    if (result.data && typeof result.data === 'object' && 'message' in result.data && result.status >= 400) {
+      throw new Error(result.data.message);
+    }
+    return result;
+  }
 
   // --- Load / save client ID ---
   function getClientId() {
@@ -121,13 +136,39 @@ import Layout from '../layouts/Layout.astro';
     hideConfigUI();
   });
 
+  // --- Find or create the guestbook issue ---
+  async function ensureIssue() {
+    // Search for issue with title "Guestbook"
+    const search = await proxy(`/search/issues?q=repo:${OWNER}/${REPO}+type:issue+state:open+"Guestbook"`, {
+      method: 'GET',
+    });
+    if (search.data.items && search.data.items.length > 0) {
+      guestbookIssueNum = search.data.items[0].number;
+      return;
+    }
+    // Create it (requires auth)
+    if (!accessToken) throw new Error('Not authenticated');
+    const created = await proxy(`/repos/${OWNER}/${REPO}/issues`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+      body: { title: 'Guestbook', body: '留言板 — 访客留言' },
+    });
+    guestbookIssueNum = created.data.number;
+  }
+
   // --- Fetch & render messages ---
   async function loadMessages() {
+    if (!guestbookIssueNum) {
+      try { await ensureIssue(); } catch {}
+    }
     messageListEl.innerHTML = '<div class="loading">加载留言中...</div>';
     try {
-      const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/issues/${ISSUE_NUM}/comments?per_page=100`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const comments = await res.json();
+      if (!guestbookIssueNum) throw new Error('No issue');
+      const result = await proxy(`/repos/${OWNER}/${REPO}/issues/${guestbookIssueNum}/comments?per_page=100`, {
+        method: 'GET',
+        headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
+      });
+      const comments = Array.isArray(result.data) ? result.data : [];
       renderMessages(comments);
     } catch {
       messageListEl.innerHTML = '<div class="error-msg">无法加载留言，请稍后再试。</div>';
@@ -181,12 +222,13 @@ import Layout from '../layouts/Layout.astro';
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          endpoint: 'device/code',
-          client_id: clientId,
-          scope: 'public_repo'
+          proxy: 'oauth',
+          url: 'device/code',
+          body: { client_id: clientId, scope: 'public_repo' }
         })
       });
-      const data = await res.json();
+      const result = await res.json();
+      const data = result.data || result;
       if (!data.device_code) {
         if (data.error_description) throw new Error(data.error_description);
         throw new Error('请求失败，请检查 Client ID 是否正确');
@@ -216,13 +258,17 @@ import Layout from '../layouts/Layout.astro';
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            endpoint: 'oauth/access_token',
-            client_id: clientId,
-            device_code: deviceCode,
-            grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+            proxy: 'oauth',
+            url: 'oauth/access_token',
+            body: {
+              client_id: clientId,
+              device_code: deviceCode,
+              grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+            }
           })
         });
-        const data = await res.json();
+        const result = await res.json();
+        const data = result.data || result;
 
         if (data.access_token) {
           clearInterval(pollTimer);
@@ -257,11 +303,11 @@ import Layout from '../layouts/Layout.astro';
   async function fetchUser() {
     if (!accessToken) return;
     try {
-      const res = await fetch('https://api.github.com/user', {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
+      const result = await proxy('/user', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${accessToken}` },
       });
-      if (!res.ok) throw new Error('Unauthorized');
-      currentUser = await res.json();
+      currentUser = result.data;
       showUserUI();
     } catch {
       localStorage.removeItem('gb_token');
@@ -298,16 +344,14 @@ import Layout from '../layouts/Layout.astro';
     submitBtn.textContent = '发送中...';
 
     try {
-      const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/issues/${ISSUE_NUM}/comments`, {
+      if (!guestbookIssueNum) await ensureIssue();
+      if (!guestbookIssueNum) throw new Error('无法创建留言板');
+
+      await proxy(`/repos/${OWNER}/${REPO}/issues/${guestbookIssueNum}/comments`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ body })
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+        body: { body },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       messageInput.value = '';
       charCount.textContent = '0/500';
