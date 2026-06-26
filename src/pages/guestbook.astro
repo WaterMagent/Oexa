@@ -179,8 +179,8 @@ import Layout from '../layouts/Layout.astro';
     try {
       const res = await fetch('https://github.com/login/device/code', {
         method: 'POST',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: clientId, scope: 'public_repo' })
+        headers: { 'Accept': 'application/json' },
+        body: new URLSearchParams({ client_id: clientId, scope: 'public_repo' })
       });
       const data = await res.json();
       if (!data.device_code) {
@@ -210,8 +210,8 @@ import Layout from '../layouts/Layout.astro';
       try {
         const res = await fetch('https://github.com/login/oauth/access_token', {
           method: 'POST',
-          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          headers: { 'Accept': 'application/json' },
+          body: new URLSearchParams({
             client_id: clientId,
             device_code: deviceCode,
             grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
