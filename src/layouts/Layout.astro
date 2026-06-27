@@ -87,6 +87,14 @@ const navItems = [
       <span class="gp-time" id="gp-time">0:00</span>
     </div>
 
+    <div class="lyrics-card" id="lyrics-card">
+      <div class="lyrics-header">
+        <span class="lyrics-title" id="lyrics-title"></span>
+        <button class="lyrics-close" id="lyrics-close" title="关闭歌词">✕</button>
+      </div>
+      <div class="lyrics-body" id="lyrics-body"></div>
+    </div>
+
     <script>
       (() => {
         var audio = document.getElementById('global-audio');
@@ -157,6 +165,135 @@ const navItems = [
           var rect = track.getBoundingClientRect();
           var pct = (e.clientX - rect.left) / rect.width;
           if (audio.duration) audio.currentTime = pct * audio.duration;
+        });
+
+        // ── Lyrics ──
+        var lrcCard, lrcTitle, lrcBody, lrcLines = [], lrcActiveIdx = -1, lrcLastSongId;
+        var _syncRaf;
+
+        function showLyrics(name) {
+          lrcCard = lrcCard || document.getElementById('lyrics-card');
+          lrcTitle = lrcTitle || document.getElementById('lyrics-title');
+          lrcTitle.textContent = name;
+          lrcCard.classList.add('visible');
+        }
+        function hideLyrics() {
+          lrcCard = lrcCard || document.getElementById('lyrics-card');
+          lrcCard.classList.remove('visible');
+          lrcLines = [];
+          lrcActiveIdx = -1;
+        }
+        document.getElementById('lyrics-close').addEventListener('click', hideLyrics);
+
+        function parseLrc(raw) {
+          var lines = raw.split('\n');
+          var out = [];
+          var tagRe = /^\[(\d+):(\d+(?:[.,]\d+)?)\](.*)/;
+          var metaRe = /^(作词|作曲|编曲|制作人|混音|母带|录音|和声|吉他|贝斯|键盘|钢琴|鼓|弦乐|歌词|Lyrics|Composer|Arranger|Producer|Mix|Master)[\s:：]/i;
+          for (var i = 0; i < lines.length; i++) {
+            var m = lines[i].match(tagRe);
+            if (!m) continue;
+            var mins = parseInt(m[1], 10);
+            var secs = parseFloat(m[2].replace(',', '.'));
+            var text = m[3].trim();
+            if (!text) continue;
+            if (metaRe.test(text)) continue;
+            out.push({ time: mins * 60 + secs, text: text });
+          }
+          out.sort(function(a, b) { return a.time - b.time; });
+          return out;
+        }
+
+        function buildLrcHtml(parsed, cls) {
+          var html = '';
+          for (var i = 0; i < parsed.length; i++) {
+            html += '<p class="lrc-line ' + (cls || '') + '" data-time="' + parsed[i].time + '">' + parsed[i].text + '</p>';
+          }
+          return html;
+        }
+
+        function syncLyrics() {
+          if (_syncRaf) return;
+          _syncRaf = requestAnimationFrame(function() {
+            _syncRaf = null;
+            if (!lrcLines.length) return;
+            if (!audio.duration) return;
+            var t = audio.currentTime || 0;
+            var idx = -1;
+            for (var i = 0; i < lrcLines.length; i++) {
+              var lineTime = parseFloat(lrcLines[i].getAttribute('data-time'));
+              if (isNaN(lineTime)) continue;
+              if (lineTime <= t) idx = i;
+              else break;
+            }
+            if (idx === lrcActiveIdx) return;
+            for (var j = 0; j < lrcLines.length; j++) {
+              lrcLines[j].style.display = 'none';
+              lrcLines[j].classList.remove('prev', 'next');
+            }
+            if (lrcActiveIdx >= 0 && lrcActiveIdx < lrcLines.length) {
+              lrcLines[lrcActiveIdx].classList.remove('active');
+            }
+            if (idx >= 0) {
+              lrcLines[idx].style.display = '';
+              lrcLines[idx].classList.add('active');
+              if (idx > 0) { lrcLines[idx - 1].style.display = ''; lrcLines[idx - 1].classList.add('prev'); }
+              if (idx < lrcLines.length - 1) { lrcLines[idx + 1].style.display = ''; lrcLines[idx + 1].classList.add('next'); }
+              lrcLines[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            lrcActiveIdx = idx;
+          });
+        }
+
+        function fetchLyrics(id, name) {
+          if (id === lrcLastSongId) return;
+          lrcLastSongId = id;
+          hideLyrics();
+          audio.removeEventListener('timeupdate', syncLyrics);
+          audio.removeEventListener('seeked', syncLyrics);
+
+          var url = '/api/music/lyric?os=pc&id=' + id + '&lv=-1&kv=-1&tv=-1';
+          fetch(url)
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              if (d.code !== 200) { hideLyrics(); return; }
+              if (d.pureMusic) { hideLyrics(); return; }
+
+              var lrc = (d.lrc && d.lrc.lyric) || '';
+              var tlrc = (d.tlyric && d.tlyric.lyric) || '';
+              var cleaned = lrc.replace(/纯音乐[，,]?\s*请欣赏/i, '').trim();
+              if (cleaned === lrc) cleaned = lrc.trim();
+
+              var parsed = cleaned ? parseLrc(cleaned) : [];
+              var tParsed = tlrc ? parseLrc(tlrc) : [];
+              if (!parsed.length && !tParsed.length) { hideLyrics(); return; }
+
+              var html = buildLrcHtml(parsed, 'lrc-orig');
+              if (tParsed.length) {
+                html += '<hr class="lyrics-divider">' + buildLrcHtml(tParsed, 'lrc-trans');
+              }
+
+              lrcBody = lrcBody || document.getElementById('lyrics-body');
+              lrcBody.innerHTML = html;
+              lrcActiveIdx = -1;
+              showLyrics(name);
+
+              lrcLines = Array.from(lrcBody.querySelectorAll('.lrc-line'));
+              audio.addEventListener('timeupdate', syncLyrics);
+              audio.addEventListener('seeked', syncLyrics);
+              syncLyrics();
+            })
+            .catch(function() { hideLyrics(); });
+        }
+
+        // Watch for new song playback
+        var _lastPlaySrc;
+        audio.addEventListener('play', function() {
+          var src = audio.src;
+          if (!src || src === _lastPlaySrc) return;
+          _lastPlaySrc = src;
+          var m = src.match(/[?&]id=(\d+)/);
+          if (m) fetchLyrics(m[1], nameEl.textContent);
         });
       })();
     </script>
@@ -414,6 +551,56 @@ const navItems = [
 
   #global-audio { display: none; }
 
+  /* ── Lyrics card ── */
+  .lyrics-card {
+    position: fixed; right: 1.25rem; bottom: 1.25rem;
+    width: 320px; max-height: 420px;
+    background: rgba(12, 12, 28, 0.92); border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    display: none; flex-direction: column; z-index: 999;
+    opacity: 0; transform: translateY(12px);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .lyrics-card.visible { display: flex; opacity: 1; transform: translateY(0); }
+  .lyrics-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.65rem 1rem; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .lyrics-title {
+    font-size: 0.8rem; color: var(--text-bright); font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;
+  }
+  .lyrics-close {
+    width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border);
+    background: transparent; color: var(--text-dim); font-size: 0.65rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .lyrics-close:hover { color: var(--text-bright); border-color: var(--accent); background: rgba(108, 99, 255, 0.1); }
+  .lyrics-body {
+    padding: 0.75rem 1rem; overflow-y: auto; flex: 1;
+    font-size: 0.78rem; line-height: 1.8; color: var(--text-dim);
+    white-space: normal; word-break: break-word;
+  }
+  .lrc-line {
+    margin: 0.25rem 0; padding: 2px 0; transition: color 0.3s, font-size 0.3s, opacity 0.3s;
+    color: var(--text-dim); cursor: default;
+  }
+  .lrc-line.active {
+    color: var(--accent-cyan); font-size: 0.88rem; font-weight: 600;
+  }
+  .lrc-line.prev,
+  .lrc-line.next {
+    color: var(--text-dim); opacity: 0.4; font-size: 0.72rem; filter: blur(0.3px);
+  }
+  .lrc-trans { opacity: 0.6; font-size: 0.72rem; }
+  .lrc-trans.active { opacity: 1; color: var(--accent); }
+  .lyrics-divider {
+    border: none; border-top: 1px dashed var(--border); margin: 0.75rem 0;
+  }
+
   @media (max-width: 600px) {
     .global-player {
       left: 64px;
@@ -423,5 +610,6 @@ const navItems = [
     }
     .gp-name { font-size: 0.7rem; }
     .gp-play { width: 24px; height: 24px; }
+    .lyrics-card { right: 0.5rem; left: 0.5rem; width: auto; bottom: 0.5rem; max-height: 35vh; }
   }
 </style>

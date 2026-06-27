@@ -108,7 +108,6 @@ function fmt(ms: number) {
     const pagePrev = document.getElementById('page-prev');
     const pageNext = document.getElementById('page-next');
     const pageInfo = document.getElementById('page-info');
-    let ga, gp, gplay, gname;
 
     function getFiltered() {
       const q = (searchBox.value || '').toLowerCase().trim();
@@ -141,10 +140,11 @@ function fmt(ms: number) {
     function playSong(el) {
       var id = el.getAttribute('data-id');
       var name = el.querySelector('.item-name')?.textContent || '';
-      ga = ga || document.getElementById('global-audio');
-      gp = gp || document.getElementById('global-player');
-      gplay = gplay || document.getElementById('gp-play');
-      gname = gname || document.getElementById('gp-name');
+      var ga = document.getElementById('global-audio');
+      var gp = document.getElementById('global-player');
+      var gplay = document.getElementById('gp-play');
+      var gname = document.getElementById('gp-name');
+      if (!ga) return;
       ga.src = 'https://music.163.com/song/media/outer/url?id=' + id + '.mp3';
       ga.play().catch(function(){});
       gp.classList.add('active');
@@ -289,4 +289,5 @@ function fmt(ms: number) {
     background: rgba(255, 193, 7, 0.12); padding: 1px 6px; border-radius: 3px;
     font-family: var(--font-mono); font-size: 0.75rem;
   }
+
 </style>
