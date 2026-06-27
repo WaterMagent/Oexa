@@ -422,4 +422,60 @@ import Layout from '../layouts/Layout.astro';
   .post-card:hover .post-read::after {
     transform: translateX(4px);
   }
+
+  @media (max-width: 768px) {
+    .hero-title { font-size: 2rem; }
+    .hero-subtitle { font-size: 1rem; }
+    .hero { min-height: 50vh; padding: 1.5rem 0; }
+    .hero-avatar-ring { width: 80px; height: 80px; }
+    .hero-avatar { width: 72px; height: 72px; }
+    .hero::before { width: 300px; height: 300px; }
+
+    .section-title { font-size: 1.25rem; }
+
+    .post-card {
+      flex-direction: column;
+    }
+    .card-banner {
+      width: 100%;
+      min-height: auto;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+    .card-banner::after {
+      background: linear-gradient(0deg, transparent, rgba(10, 10, 20, 0.3));
+    }
+    .card-banner img {
+      aspect-ratio: 3 / 2;
+      height: auto;
+    }
+    .card-body { padding: 1rem; }
+    .post-card:hover { transform: translateY(-2px); }
+  }
+
+  @media (max-width: 600px) {
+    .hero-title { font-size: 1.7rem; }
+    .hero-subtitle { font-size: 0.95rem; }
+    .hero-links {
+      flex-direction: column;
+      align-items: center;
+    }
+    .btn {
+      width: 100%;
+      max-width: 220px;
+      justify-content: center;
+    }
+    .post-card { border-radius: var(--radius); }
+    .card-banner { min-height: 120px; }
+  }
+
+  @media (max-width: 400px) {
+    .hero-title { font-size: 1.4rem; }
+    .hero-avatar-ring { width: 64px; height: 64px; }
+    .hero-avatar { width: 56px; height: 56px; }
+    .hero { min-height: 40vh; }
+    .section-title { font-size: 1.1rem; }
+    .card-banner img { aspect-ratio: 4 / 3; }
+    .post-title { font-size: 1rem; }
+    .post-desc { font-size: 0.82rem; }
+  }
 </style>

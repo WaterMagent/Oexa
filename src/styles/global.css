@@ -236,3 +236,60 @@ blockquote {
   margin-left: auto;
   margin-right: auto;
 }
+
+/* ── Mobile typography ── */
+@media (max-width: 768px) {
+  .main-content h1,
+  .prose h1 {
+    font-size: 1.6rem;
+    margin: 1.5rem 0 0.75rem;
+  }
+  .main-content h2,
+  .prose h2 {
+    font-size: 1.35rem;
+    margin: 1.5rem 0 0.6rem;
+  }
+  .main-content h3,
+  .prose h3 {
+    font-size: 1.1rem;
+    margin: 1rem 0 0.5rem;
+  }
+
+  pre {
+    font-size: 0.8rem;
+    padding: 0.8rem;
+  }
+
+  .about-avatar {
+    width: 96px;
+    height: 96px;
+  }
+
+  .about-avatar ~ h2:first-of-type {
+    font-size: 1.6rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .main-content h1,
+  .prose h1 {
+    font-size: 1.4rem;
+  }
+  .main-content h2,
+  .prose h2 {
+    font-size: 1.2rem;
+  }
+  .main-content h3,
+  .prose h3 {
+    font-size: 1rem;
+  }
+
+  .about-avatar {
+    width: 80px;
+    height: 80px;
+  }
+
+  .about-avatar ~ h2:first-of-type {
+    font-size: 1.4rem;
+  }
+}

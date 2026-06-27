@@ -216,4 +216,41 @@ const sortedPosts = posts.sort(
   .blog-list .post-card:hover .post-read::after {
     transform: translateX(4px);
   }
+
+  @media (max-width: 768px) {
+    .blog-page-title { font-size: 1.8rem; }
+    .blog-page-desc { font-size: 0.95rem; }
+
+    .blog-list .post-card {
+      flex-direction: column;
+    }
+    .card-banner {
+      width: 100%;
+      min-height: auto;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+    .card-banner::after {
+      background: linear-gradient(0deg, transparent, rgba(10, 10, 20, 0.3));
+    }
+    .card-banner img {
+      aspect-ratio: 3 / 2;
+      height: auto;
+    }
+    .card-body { padding: 1rem; }
+    .blog-list .post-card:hover { transform: translateY(-2px); }
+  }
+
+  @media (max-width: 600px) {
+    .blog-page-title { font-size: 1.5rem; }
+    .blog-page { padding: 1rem 0; }
+    .card-banner { min-height: 120px; }
+  }
+
+  @media (max-width: 400px) {
+    .blog-page-title { font-size: 1.3rem; }
+    .blog-page-desc { font-size: 0.85rem; margin-bottom: 1.5rem; }
+    .card-banner img { aspect-ratio: 4 / 3; }
+    .blog-list .post-title { font-size: 1rem; }
+    .blog-list .post-desc { font-size: 0.82rem; }
+  }
 </style>

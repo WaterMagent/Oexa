@@ -1,10 +1,10 @@
 {"message":"connected.","label":"vite","level":"info"}
-{"message":"Generated 0ms","label":"types","level":"info"}
+{"message":"Generated 1ms","label":"types","level":"info"}
 {"message":"connected.","label":"vite","level":"info"}
-{"message":" astro  v7.0.2 ready in 1328 ms\n┃ Local    http://localhost:4321/\n┃ Network  use --host to expose","label":"SKIP_FORMAT","level":"info"}
+{"message":"Re-optimizing dependencies because vite config has changed","label":"vite","level":"info"}
+{"message":" astro  v7.0.3 ready in 1338 ms\n┃ Local    http://localhost:4321/\n┃ Network  use --host to expose","label":"SKIP_FORMAT","level":"info"}
 {"message":"watching for file changes...","label":null,"level":"info"}
-{"message":"[200] /building-with-astro/ 41ms","label":null,"level":"info"}
-{"message":"[200] /building-with-astro/ 5ms","label":null,"level":"info"}
-{"message":"[200] /about 29ms","label":null,"level":"info"}
-{"message":"[200] /music 36ms","label":null,"level":"info"}
-{"message":"[200] /blog 23ms","label":null,"level":"info"}
+{"message":"[200] /music 35ms","label":null,"level":"info"}
+{"message":"[200] /music 12ms","label":null,"level":"info"}
+{"message":"[200] /music 23ms","label":null,"level":"info"}
+{"message":"[200] / 22ms","label":null,"level":"info"}

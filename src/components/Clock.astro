@@ -80,9 +80,19 @@ const angleStep = 360 / segs;
     line-height: 1;
   }
 
+  @media (max-width: 768px) {
+    .dt-clock { width: 80px; height: 80px; top: 12px; right: 12px; }
+    .dt-time { font-size: 1.1rem; }
+  }
+
   @media (max-width: 600px) {
-    .dt-clock { width: 76px; height: 76px; top: 12px; right: 12px; }
-    .dt-time { font-size: 1rem; }
+    .dt-clock { width: 64px; height: 64px; top: 10px; right: 10px; }
+    .dt-time { font-size: 0.9rem; }
+  }
+
+  @media (max-width: 400px) {
+    .dt-clock { width: 52px; height: 52px; top: 6px; right: 6px; }
+    .dt-time { font-size: 0.72rem; }
   }
 </style>
 

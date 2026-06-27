@@ -105,4 +105,21 @@ import Layout from '../layouts/Layout.astro';
   .nf-link:hover .nf-link-arrow {
     transform: translateX(-3px);
   }
+
+  @media (max-width: 768px) {
+    .nf-code { font-size: 4rem; }
+    .nf-code-bracket { font-size: 2rem; }
+    .nf-desc { font-size: 1rem; }
+  }
+
+  @media (max-width: 600px) {
+    .nf-code { font-size: 3.5rem; }
+  }
+
+  @media (max-width: 400px) {
+    .nf-code { font-size: 2.8rem; }
+    .nf-code-bracket { font-size: 1.4rem; }
+    .nf-desc { font-size: 0.9rem; }
+    .not-found { min-height: 50vh; padding: 1rem; }
+  }
 </style>

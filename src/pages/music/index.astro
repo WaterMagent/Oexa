@@ -290,4 +290,34 @@ function fmt(ms: number) {
     font-family: var(--font-mono); font-size: 0.75rem;
   }
 
+  @media (max-width: 768px) {
+    .music-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .music-cover-wrap { width: 96px; height: 96px; }
+    .music-cover { width: 96px; height: 96px; }
+    .music-title { font-size: 1.5rem; }
+    .music-page { padding: 1rem 0; }
+    .music-controls { flex-wrap: wrap; }
+  }
+
+  @media (max-width: 600px) {
+    .music-title { font-size: 1.35rem; }
+    .music-cover-wrap { width: 80px; height: 80px; }
+    .music-cover { width: 80px; height: 80px; }
+    .music-meta-tag { font-size: 0.65rem; }
+  }
+
+  @media (max-width: 400px) {
+    .music-cover-wrap { width: 64px; height: 64px; }
+    .music-cover { width: 64px; height: 64px; }
+    .music-title { font-size: 1.2rem; }
+    .music-item { padding: 0.4rem 0.5rem; gap: 0.5rem; }
+    .item-cover { width: 32px; height: 32px; }
+    .item-name { font-size: 0.82rem; }
+    .item-artist { font-size: 0.7rem; }
+  }
+
 </style>
