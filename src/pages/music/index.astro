@@ -165,6 +165,7 @@ function fmt(ms: number) {
     function playSong(el) {
       var id = el.getAttribute('data-id');
       var name = el.querySelector('.item-name')?.textContent || '';
+      var artist = el.querySelector('.item-artist')?.textContent || '';
       var ga = document.getElementById('global-audio');
       var gp = document.getElementById('global-player');
       var gplay = document.getElementById('gp-play');
@@ -178,6 +179,14 @@ function fmt(ms: number) {
       sessionStorage.setItem('gp', JSON.stringify({ name: name, url: ga.src, time: 0, playing: true }));
       allItems.forEach(function(e) { e.classList.remove('playing'); });
       el.classList.add('playing');
+
+      // Save playlist to sessionStorage for cross-page list/shuffle modes
+      var playlist = allItems.map(function(e) {
+        var n = e.querySelector('.item-name')?.textContent || '';
+        var a = e.querySelector('.item-artist')?.textContent || '';
+        return { id: e.getAttribute('data-id'), name: n + ' — ' + a };
+      });
+      sessionStorage.setItem('gp-playlist', JSON.stringify(playlist));
     }
 
     listEl.addEventListener('click', function(e) {

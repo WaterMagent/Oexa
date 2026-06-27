@@ -8,13 +8,17 @@
     position: fixed;
     inset: 0;
     z-index: 9999;
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background: #050508;
     transition: opacity 0.8s ease, transform 0.8s ease;
     pointer-events: none;
+  }
+
+  #startup-overlay.active {
+    display: flex;
   }
 
   #startup-overlay.dismissed {
@@ -480,7 +484,7 @@
   }
 </style>
 
-<div id="startup-overlay">
+<div id="startup-overlay" transition:persist>
   <div class="startup-hex-grid"></div>
   <canvas id="startup-rain"></canvas>
   <div class="startup-sweep"></div>
@@ -544,12 +548,10 @@
     if (!overlay) return;
 
     // Only play once per tab session
-    if (sessionStorage.getItem('startupShown')) {
-      overlay.classList.add('hidden');
-      return;
-    }
+    if (sessionStorage.getItem('startupShown')) return;
 
     sessionStorage.setItem('startupShown', 'true');
+    overlay.classList.add('active');
     overlay.style.pointerEvents = 'auto';
 
     /* ── Digital Rain (Canvas) ── */

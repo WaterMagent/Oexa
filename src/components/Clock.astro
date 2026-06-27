@@ -6,7 +6,7 @@ const cx = 50, cy = 50, r = 44;
 const angleStep = 360 / segs;
 ---
 
-<div class="dt-clock" id="dt-clock">
+<div class="dt-clock" id="dt-clock" transition:persist>
   <svg class="dt-svg" viewBox="0 0 100 100">
     <defs>
       <linearGradient id="dfg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -98,6 +98,9 @@ const angleStep = 360 / segs;
 
 <script>
   (() => {
+    if (window.__clock_init) return;
+    window.__clock_init = true;
+
     var el = document.getElementById('dt-time');
     if (!el) return;
 

@@ -1,12 +1,93 @@
 {"message":"connected.","label":"vite","level":"info"}
-{"message":"Generated 1ms","label":"types","level":"info"}
+{"message":"Generated 0ms","label":"types","level":"info"}
 {"message":"connected.","label":"vite","level":"info"}
 {"message":"Re-optimizing dependencies because vite config has changed","label":"vite","level":"info"}
-{"message":" astro  v7.0.3 ready in 1338 ms\n┃ Local    http://localhost:4321/\n┃ Network  use --host to expose","label":"SKIP_FORMAT","level":"info"}
+{"message":" astro  v7.0.3 ready in 1346 ms\n┃ Local    http://localhost:4321/\n┃ Network  use --host to expose","label":"SKIP_FORMAT","level":"info"}
 {"message":"watching for file changes...","label":null,"level":"info"}
-{"message":"[200] /music 35ms","label":null,"level":"info"}
-{"message":"[200] /music 12ms","label":null,"level":"info"}
-{"message":"[200] /music 23ms","label":null,"level":"info"}
-{"message":"[200] / 22ms","label":null,"level":"info"}
+{"message":"[200] /blog 41ms","label":null,"level":"info"}
+{"message":"[200] /blog 6ms","label":null,"level":"info"}
+{"message":"✨ new dependencies optimized: astro/virtual-modules/transitions-events.js, astro/virtual-modules/transitions-router.js, astro/virtual-modules/transitions-swap-functions.js, astro/virtual-modules/transitions-types.js","label":"vite","level":"info"}
+{"message":"[200] / 19ms","label":null,"level":"info"}
+{"message":"[200] / 3ms","label":null,"level":"info"}
+{"message":"[200] /about 30ms","label":null,"level":"info"}
+{"message":"[200] /about 5ms","label":null,"level":"info"}
+{"message":"[200] /music 32ms","label":null,"level":"info"}
+{"message":"[200] /blog 4ms","label":null,"level":"info"}
+{"message":"[200] /about 6ms","label":null,"level":"info"}
+{"message":"[200] / 5ms","label":null,"level":"info"}
+{"message":"[200] /blog 4ms","label":null,"level":"info"}
+{"message":"[200] /music 7ms","label":null,"level":"info"}
+{"message":"[200] /music 9ms","label":null,"level":"info"}
+{"message":"[200] /music 10ms","label":null,"level":"info"}
 {"message":"[200] / 4ms","label":null,"level":"info"}
-{"message":"[200] /blog/ 20ms","label":null,"level":"info"}
+{"message":"[200] / 3ms","label":null,"level":"info"}
+{"message":"[200] / 3ms","label":null,"level":"info"}
+{"message":"[200] /music 9ms","label":null,"level":"info"}
+{"message":"[200] /blog 3ms","label":null,"level":"info"}
+{"message":"[200] /blog 4ms","label":null,"level":"info"}
+{"message":"[200] /hello-world/ 22ms","label":null,"level":"info"}
+{"message":"[200] /hello-world/ 3ms","label":null,"level":"info"}
+{"message":"src/components/StartupAnimation.astro","label":"watch","level":"info"}
+{"message":"[200] /hello-world/ 34ms","label":null,"level":"info"}
+{"message":"/src/components/StartupAnimation.astro?astro&type=style&index=0&lang.css","label":"watch","level":"info"}
+{"message":"src/components/StartupAnimation.astro","label":"watch","level":"info"}
+{"message":"[200] /hello-world/ 31ms","label":null,"level":"info"}
+{"message":"build/404.html","label":"watch","level":"info"}
+{"message":"build/about/index.html","label":"watch","level":"info"}
+{"message":"build/blog/index.html","label":"watch","level":"info"}
+{"message":"build/building-with-astro/index.html","label":"watch","level":"info"}
+{"message":"build/hello-world/index.html","label":"watch","level":"info"}
+{"message":"build/index.html","label":"watch","level":"info"}
+{"message":"build/music/index.html","label":"watch","level":"info"}
+{"message":"build/404.html","label":"watch","level":"info"}
+{"message":"build/about/index.html","label":"watch","level":"info"}
+{"message":"build/blog/index.html","label":"watch","level":"info"}
+{"message":"build/building-with-astro/index.html","label":"watch","level":"info"}
+{"message":"build/hello-world/index.html","label":"watch","level":"info"}
+{"message":"build/music/index.html","label":"watch","level":"info"}
+{"message":"build/index.html","label":"watch","level":"info"}
+{"message":"[200] /hello-world/ 8ms","label":null,"level":"info"}
+{"message":"[200] /about 20ms","label":null,"level":"info"}
+{"message":"[200] /music 27ms","label":null,"level":"info"}
+{"message":"[200] /music 7ms","label":null,"level":"info"}
+{"message":"[200] /music 10ms","label":null,"level":"info"}
+{"message":"[200] /blog 26ms","label":null,"level":"info"}
+{"message":"[200] /blog 4ms","label":null,"level":"info"}
+{"message":"[200] / 19ms","label":null,"level":"info"}
+{"message":"[200] / 3ms","label":null,"level":"info"}
+(node:14792) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 close listeners added to [Socket]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"message":"[200] / 3ms","label":null,"level":"info"}
+{"message":"[200] / 5ms","label":null,"level":"info"}
+{"message":"[200] /music 10ms","label":null,"level":"info"}
+{"message":"[200] /music 9ms","label":null,"level":"info"}
+{"message":"[200] /blog 5ms","label":null,"level":"info"}
+{"message":"[200] /music 6ms","label":null,"level":"info"}
+{"message":"[200] /blog 4ms","label":null,"level":"info"}
+{"message":"[200] /music 7ms","label":null,"level":"info"}
+{"message":"[200] /about 3ms","label":null,"level":"info"}
+{"message":"[200] /about 2ms","label":null,"level":"info"}
+{"message":"src/layouts/Layout.astro","label":"watch","level":"info"}
+{"message":"[200] /about 35ms","label":null,"level":"info"}
+{"message":"build/404.html","label":"watch","level":"info"}
+{"message":"build/about/index.html","label":"watch","level":"info"}
+{"message":"build/blog/index.html","label":"watch","level":"info"}
+{"message":"build/building-with-astro/index.html","label":"watch","level":"info"}
+{"message":"build/hello-world/index.html","label":"watch","level":"info"}
+{"message":"build/index.html","label":"watch","level":"info"}
+{"message":"build/music/index.html","label":"watch","level":"info"}
+{"message":"build/404.html","label":"watch","level":"info"}
+{"message":"build/about/index.html","label":"watch","level":"info"}
+{"message":"build/blog/index.html","label":"watch","level":"info"}
+{"message":"build/building-with-astro/index.html","label":"watch","level":"info"}
+{"message":"build/hello-world/index.html","label":"watch","level":"info"}
+{"message":"build/music/index.html","label":"watch","level":"info"}
+{"message":"build/index.html","label":"watch","level":"info"}
+{"message":"[200] /music 26ms","label":null,"level":"info"}
+{"message":"[200] /music 14ms","label":null,"level":"info"}
+{"message":"[200] / 19ms","label":null,"level":"info"}
+{"message":"[200] /blog 23ms","label":null,"level":"info"}
+{"message":"[200] /blog 3ms","label":null,"level":"info"}
+{"message":"[200] /blog 3ms","label":null,"level":"info"}
+{"message":"[200] / 4ms","label":null,"level":"info"}
+{"message":"[200] / 4ms","label":null,"level":"info"}

@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import StartupAnimation from '../components/StartupAnimation.astro';
 import Clock from '../components/Clock.astro';
+import { ClientRouter } from 'astro:transitions';
 
 export interface Props {
   title?: string;
@@ -30,12 +31,13 @@ const navItems = [
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <ClientRouter />
   </head>
   <body>
     <div class="scanlines" aria-hidden="true"></div>
     <StartupAnimation />
     <div class="page-layout">
-      <nav class="sidebar">
+      <nav class="sidebar" transition:persist>
         <a href="/about" class="sidebar-avatar-link" aria-label="关于">
           <div class="sidebar-avatar-ring">
             <img
@@ -75,9 +77,10 @@ const navItems = [
       <p>&copy; {new Date().getFullYear()} Baumkuchen. 保留所有权利。</p>
     </footer>
 
-    <div class="global-player" id="global-player">
+    <div class="global-player" id="global-player" transition:persist>
       <audio id="global-audio" preload="metadata"></audio>
       <button class="gp-play" id="gp-play">▸</button>
+      <button class="gp-mode" id="gp-mode" title="列表循环">↻</button>
       <div class="gp-info">
         <div class="gp-name" id="gp-name"></div>
         <div class="gp-track" id="gp-track">
@@ -87,7 +90,7 @@ const navItems = [
       <span class="gp-time" id="gp-time">0:00</span>
     </div>
 
-    <div class="lyrics-card" id="lyrics-card">
+    <div class="lyrics-card" id="lyrics-card" transition:persist>
       <div class="lyrics-header">
         <span class="lyrics-title" id="lyrics-title"></span>
         <button class="lyrics-close" id="lyrics-close" title="关闭歌词">✕</button>
@@ -97,20 +100,36 @@ const navItems = [
 
     <script>
       (() => {
+        // Guard: only initialize once (View Transitions may re-run scripts)
+        if (window.__gp_init) return;
+        window.__gp_init = true;
+
         var audio = document.getElementById('global-audio');
         var player = document.getElementById('global-player');
         var playBtn = document.getElementById('gp-play');
+        var modeBtn = document.getElementById('gp-mode');
         var nameEl = document.getElementById('gp-name');
         var track = document.getElementById('gp-track');
         var progress = document.getElementById('gp-progress');
         var timeEl = document.getElementById('gp-time');
+
+        // Play mode: 'list' | 'single' | 'shuffle'
+        var MODES = ['list', 'single', 'shuffle'];
+        var MODE_ICONS = { list: '↻', single: '↺', shuffle: '↯' };
+        var MODE_TITLES = { list: '列表循环', single: '单曲循环', shuffle: '随机播放' };
+
+        var playMode = 'list';
+        var savedMode = sessionStorage.getItem('gp-mode');
+        if (savedMode && MODES.indexOf(savedMode) !== -1) playMode = savedMode;
+        modeBtn.textContent = MODE_ICONS[playMode];
+        modeBtn.title = MODE_TITLES[playMode];
 
         function fmt(sec) {
           sec = Math.floor(sec || 0);
           return Math.floor(sec / 60) + ':' + (sec % 60 < 10 ? '0' : '') + (sec % 60);
         }
 
-        // Restore session
+        // Restore session — show player but don't auto-play (browser policy)
         var saved = sessionStorage.getItem('gp');
         if (saved) {
           try {
@@ -120,14 +139,25 @@ const navItems = [
               nameEl.textContent = state.name;
               audio.src = state.url;
               if (state.time) audio.currentTime = state.time;
-              if (state.playing) { audio.play().catch(function(){}); playBtn.textContent = '❚❚'; }
+              // Don't auto-play — user must click to resume after navigation
+              playBtn.textContent = state.playing ? '▸' : '▸';
             }
           } catch(e) {}
         }
 
-        // Save state before unload
+        // Save state periodically
+        function saveState() {
+          sessionStorage.setItem('gp', JSON.stringify({
+            name: nameEl.textContent,
+            url: audio.src,
+            time: audio.currentTime,
+            playing: !audio.paused
+          }));
+        }
+
         window.addEventListener('beforeunload', function() { saveState(); });
 
+        // ── Play / Pause ──
         playBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           if (audio.paused) { audio.play().catch(function(){}); playBtn.textContent = '❚❚'; }
@@ -142,29 +172,73 @@ const navItems = [
           }
         });
 
-        function saveState() {
-          sessionStorage.setItem('gp', JSON.stringify({
-            name: nameEl.textContent,
-            url: audio.src,
-            time: audio.currentTime,
-            playing: !audio.paused
-          }));
-        }
-
         audio.addEventListener('loadedmetadata', function() {
           progress.style.width = '0%';
         });
 
-        audio.addEventListener('ended', function() {
-          playBtn.textContent = '▸';
+        function playSongFromPlaylist(song) {
+          var url = 'https://music.163.com/song/media/outer/url?id=' + song.id + '.mp3';
+          audio.src = url;
+          nameEl.textContent = song.name;
+          player.classList.add('active');
+          playBtn.textContent = '❚❚';
           progress.style.width = '0%';
           timeEl.textContent = '0:00';
+          audio.play().catch(function(){});
+          saveState();
+        }
+
+        audio.addEventListener('ended', function() {
+          if (playMode === 'single') {
+            audio.currentTime = 0;
+            audio.play().catch(function(){});
+            return;
+          }
+
+          var list = [];
+          try {
+            var raw = sessionStorage.getItem('gp-playlist');
+            if (raw) list = JSON.parse(raw);
+          } catch(e) {}
+
+          if (!list.length) {
+            playBtn.textContent = '▸';
+            progress.style.width = '0%';
+            timeEl.textContent = '0:00';
+            return;
+          }
+
+          if (playMode === 'shuffle') {
+            var idx = Math.floor(Math.random() * list.length);
+            playSongFromPlaylist(list[idx]);
+          } else {
+            // list loop
+            var currentId = '';
+            var m = audio.src.match(/[?&]id=(\d+)/);
+            if (m) currentId = m[1];
+            var curIdx = -1;
+            for (var i = 0; i < list.length; i++) {
+              if (String(list[i].id) === currentId) { curIdx = i; break; }
+            }
+            var nextIdx = curIdx >= 0 ? (curIdx + 1) % list.length : 0;
+            playSongFromPlaylist(list[nextIdx]);
+          }
         });
 
         track.addEventListener('click', function(e) {
           var rect = track.getBoundingClientRect();
           var pct = (e.clientX - rect.left) / rect.width;
           if (audio.duration) audio.currentTime = pct * audio.duration;
+        });
+
+        // ── Play mode toggle ──
+        modeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var cur = MODES.indexOf(playMode);
+          playMode = MODES[(cur + 1) % MODES.length];
+          modeBtn.textContent = MODE_ICONS[playMode];
+          modeBtn.title = MODE_TITLES[playMode];
+          sessionStorage.setItem('gp-mode', playMode);
         });
 
         // ── Lyrics ──
@@ -295,6 +369,20 @@ const navItems = [
           var m = src.match(/[?&]id=(\d+)/);
           if (m) fetchLyrics(m[1], nameEl.textContent);
         });
+      })();
+    </script>
+    <script>
+      // Keep sidebar active state in sync across ClientRouter navigations
+      (function() {
+        function update() {
+          var path = window.location.pathname;
+          document.querySelectorAll('.sidebar-item').forEach(function(el) {
+            var href = el.getAttribute('href');
+            el.classList.toggle('active', path === href || (href !== '/' && path.startsWith(href)));
+          });
+        }
+        update();
+        document.addEventListener('astro:after-swap', update);
       })();
     </script>
   </body>
@@ -688,6 +776,14 @@ const navItems = [
   }
   .gp-play:hover { background: rgba(108, 99, 255, 0.15); box-shadow: 0 0 12px var(--accent-glow); }
 
+  .gp-mode {
+    width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
+    border: 1px solid var(--border); background: transparent; color: var(--text-dim);
+    font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; line-height: 1;
+  }
+  .gp-mode:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
   .gp-info {
     flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
   }
@@ -800,6 +896,7 @@ const navItems = [
     }
     .gp-name { font-size: 0.65rem; }
     .gp-play { width: 22px; height: 22px; font-size: 0.55rem; }
+    .gp-mode { width: 20px; height: 20px; font-size: 0.55rem; }
     .gp-time { font-size: 0.55rem; min-width: 30px; }
     .lyrics-card {
       right: 0.25rem;
