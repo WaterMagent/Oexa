@@ -8,3 +8,5 @@
 {"message":"[200] /music 12ms","label":null,"level":"info"}
 {"message":"[200] /music 23ms","label":null,"level":"info"}
 {"message":"[200] / 22ms","label":null,"level":"info"}
+{"message":"[200] / 4ms","label":null,"level":"info"}
+{"message":"[200] /blog/ 20ms","label":null,"level":"info"}

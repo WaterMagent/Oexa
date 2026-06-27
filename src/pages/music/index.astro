@@ -100,7 +100,20 @@ function fmt(ms: number) {
   (() => {
     const pageSize = 50;
     const allItems = Array.from(document.querySelectorAll('.music-item'));
-    let currentPage = 1;
+
+    function getPageFromURL() {
+      var p = parseInt(new URLSearchParams(window.location.search).get('page'), 10);
+      return p > 0 ? p : 1;
+    }
+
+    function syncURL(page) {
+      var url = new URL(window.location);
+      if (page > 1) url.searchParams.set('page', String(page));
+      else url.searchParams.delete('page');
+      history.replaceState(null, '', url);
+    }
+
+    let currentPage = getPageFromURL();
 
     const listEl = document.getElementById('music-list');
     const searchBox = document.getElementById('music-search');
@@ -135,7 +148,19 @@ function fmt(ms: number) {
       pageNext.disabled = currentPage >= pages;
       pageInfo.textContent = '第 ' + currentPage + ' / ' + pages + ' 页';
       pageNext.textContent = currentPage >= pages ? '' : '下一页 ›';
+      syncURL(currentPage);
     }
+
+    function goToPage(page) {
+      currentPage = page;
+      renderPage();
+      window.scrollTo(0, listEl.offsetTop - 80);
+    }
+
+    window.addEventListener('popstate', function() {
+      currentPage = getPageFromURL();
+      renderPage();
+    });
 
     function playSong(el) {
       var id = el.getAttribute('data-id');
@@ -170,11 +195,11 @@ function fmt(ms: number) {
     });
 
     pagePrev.addEventListener('click', function() {
-      if (currentPage > 1) { currentPage--; renderPage(); window.scrollTo(0, listEl.offsetTop - 80); }
+      if (currentPage > 1) goToPage(currentPage - 1);
     });
     pageNext.addEventListener('click', function() {
       var pages = Math.max(1, Math.ceil(getFiltered().length / pageSize));
-      if (currentPage < pages) { currentPage++; renderPage(); window.scrollTo(0, listEl.offsetTop - 80); }
+      if (currentPage < pages) goToPage(currentPage + 1);
     });
 
     renderPage();
