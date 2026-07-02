@@ -103,6 +103,19 @@ function loadCache() {
 }
 
 /**
+ * Reorder songs to match the playlist's track order.
+ * @param {object[]} songs
+ * @param {number[]} trackIds
+ * @returns {object[]}
+ */
+function reorderByPlaylist(songs, trackIds) {
+  const songMap = new Map(songs.map((s) => [s.id, s]));
+  return trackIds
+    .map((id) => songMap.get(id))
+    .filter(Boolean);
+}
+
+/**
  * Save songs array to cache.
  * @param {object[]} songs
  */
@@ -125,15 +138,21 @@ const allSongs = existing ? [...existing.songs] : [];
 
 console.log(`   Cache: ${allSongs.length} songs  |  Missing: ${totalCount - allSongs.length}`);
 
+// Build cover info early (needed for both paths)
+const cover = { cover: coverUrl, name, playCount, totalCount };
+
 // Build list of IDs we still need
 const missingIds = trackIds.filter((id) => !seenIds.has(id));
 if (missingIds.length === 0) {
   console.log('✅ Cache is already complete!');
+  // Reorder to match playlist order in case songs were added/removed upstream
+  const orderedSongs = reorderByPlaylist(allSongs, trackIds);
+  saveCache(orderedSongs, cover);
+  console.log('   🔄 Reordered songs to match playlist order.');
   process.exit(0);
 }
 
-// Save cover info
-const cover = { cover: coverUrl, name, playCount, totalCount };
+// (cover already defined above)
 
 // Fetch missing in batches
 let fetched = 0;
@@ -187,9 +206,10 @@ for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
   }
 }
 
-// Final save
-saveCache(allSongs, cover);
-console.log(`\n✅ Done! ${allSongs.length}/${totalCount} songs cached.`);
+// Final save — reorder to match playlist order
+const orderedSongs = reorderByPlaylist(allSongs, trackIds);
+saveCache(orderedSongs, cover);
+console.log(`\n✅ Done! ${orderedSongs.length}/${totalCount} songs cached.`);
 if (allSongs.length < totalCount) {
   console.log(`   ⚠️  Missing ${totalCount - allSongs.length} songs — re-run the script to retry.`);
   process.exit(1);

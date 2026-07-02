@@ -15,7 +15,8 @@
       "Bash(astro dev *)",
       "Bash(bun run *)",
       "Bash(curl -s http://localhost:4321/)",
-      "Bash(curl -s http://localhost:4321/blog/)"
+      "Bash(curl -s http://localhost:4321/blog/)",
+      "Bash(python3 -c \"import sys,json; data=json.loads\\(sys.stdin.read\\(\\)+']}'\\)[0] if False else None;\")"
     ]
   }
 }
