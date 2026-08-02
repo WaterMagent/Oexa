@@ -8,7 +8,7 @@ const issue = Astro.props.issue || '[Guestbook]';
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
 
-<div class="comments-widget" data-issue={issue}>
+<div class="comments-widget" data-issue={issue} id={`cmts-${issue.replace(/[^a-zA-Z0-9-]/g,'')}`}>
   <div class="comments-auth">
     <div class="comments-login" style="display:none">
       <p class="login-hint">选择登录方式：</p>
@@ -39,20 +39,16 @@ const issue = Astro.props.issue || '[Guestbook]';
   </div>
 
   <div class="comments-list"><div class="loading">加载中...</div></div>
+  <!-- The script finds this widget via document.currentScript.closest() -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@11/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script>
+  (() => {
+    const root = (document.currentScript && document.currentScript.parentElement) || document.querySelector('.comments-widget');
+    if (!root || root.dataset.cInit) return;
+    root.dataset.cInit = '1';
 
-<script>
-  // Pass issue to the main script
-  window.__cmts_issue = {issue};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/marked@11/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script>
-(() => {
-  // Find the widget that matches this issue
-  const issueName = window.__cmts_issue?.issue || '[Guestbook]';
-  const root = document.querySelector(`.comments-widget[data-issue="${issueName.replace(/"/g, '\\"')}"]`);
-  if (!root || root.dataset.cInit) return;
-  root.dataset.cInit = '1';
+    const issueName = root.dataset.issue || '[Guestbook]';
 
   const issueName = root.dataset.issue || '[Guestbook]';
   const API_AUTH = '/.netlify/functions/auth';
@@ -296,6 +292,7 @@ const issue = Astro.props.issue || '[Guestbook]';
   window.addEventListener('popstate',()=>{const p=getPageFromURL();if(p!==currentMsgPage){currentMsgPage=p;renderPage();}});
 })();
 </script>
+</div>
 
 <style is:global>
   .comments-widget { padding: 1rem 0 2rem; }
