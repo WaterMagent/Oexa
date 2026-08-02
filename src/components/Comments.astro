@@ -39,13 +39,18 @@ const issue = Astro.props.issue || '[Guestbook]';
   </div>
 
   <div class="comments-list"><div class="loading">加载中...</div></div>
-</div>
 
+<script>
+  // Pass issue to the main script
+  window.__cmts_issue = {issue};
+</script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script>
 (() => {
-  const root = document.currentScript.closest('.comments-widget');
+  // Find the widget that matches this issue
+  const issueName = window.__cmts_issue?.issue || '[Guestbook]';
+  const root = document.querySelector(`.comments-widget[data-issue="${issueName.replace(/"/g, '\\"')}"]`);
   if (!root || root.dataset.cInit) return;
   root.dataset.cInit = '1';
 
