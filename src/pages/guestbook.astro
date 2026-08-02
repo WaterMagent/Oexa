@@ -834,9 +834,21 @@ import Layout from '../layouts/Layout.astro';
 
   .message-reply {
     background: rgba(16, 16, 28, 0.5);
+    padding: 0.5rem 0.75rem;
   }
 
-  .message-reply .message-avatar { width: 24px; height: 24px; }
+  .message-reply .message-header {
+    margin-bottom: 0.25rem;
+  }
+
+  .message-reply .message-avatar { width: 20px; height: 20px; }
+  .message-reply .message-username { font-size: 0.8rem; }
+  .message-reply .message-provider-tag { font-size: 0.6rem; }
+  .message-reply .message-date { font-size: 0.7rem; }
+  .message-reply .message-body { font-size: 0.85rem; }
+  .message-reply .message-body p { margin: 0.15rem 0; }
+  .message-reply .btn-reply { font-size: 0.7rem; padding: 1px 8px; }
+  .message-reply .message-actions { padding-top: 0.15rem; }
 
   /* ── Markdown / KaTeX in messages ── */
   .message-body p { margin: 0.4rem 0; }
