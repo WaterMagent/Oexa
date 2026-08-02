@@ -1,6 +1,7 @@
 ---
 import Layout from './Layout.astro';
 import TableOfContents from '../components/TableOfContents.astro';
+import Comments from '../components/Comments.astro';
 
 export interface Props {
   frontmatter: {
@@ -12,6 +13,7 @@ export interface Props {
 }
 
 const { frontmatter } = Astro.props;
+const slug = Astro.url.pathname.replace(/\/$/, '').split('/').pop() || 'post';
 ---
 
 <Layout title={frontmatter.title} description={frontmatter.description}>
@@ -36,6 +38,7 @@ const { frontmatter } = Astro.props;
       <slot />
     </div>
   </article>
+  <Comments issue={`[Comments] ${slug}`} />
   <TableOfContents />
 </Layout>
 

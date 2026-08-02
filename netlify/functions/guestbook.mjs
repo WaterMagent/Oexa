@@ -10,7 +10,7 @@ import { createHmac } from 'node:crypto';
 
 const OWNER = 'WaterMagent';
 const REPO = 'oexa';
-const ISSUE_TITLE = '[Guestbook]';
+const DEFAULT_ISSUE = '[Guestbook]';
 
 // ── Crypto ─────────────────────────────────────────────────────────
 
@@ -87,22 +87,24 @@ async function ghRequest(endpoint, opts = {}) {
   return data;
 }
 
-let _issueNum = null;
+const _issueCache = new Map();
 
-async function getIssueNumber() {
-  if (_issueNum !== null) return _issueNum;
-  const q = encodeURIComponent(`repo:${OWNER}/${REPO} type:issue state:open ${ISSUE_TITLE}`);
+async function getIssueNumber(title) {
+  if (_issueCache.has(title)) return _issueCache.get(title);
+  const q = encodeURIComponent(`repo:${OWNER}/${REPO} type:issue state:open ${title}`);
   const search = await ghRequest(`/search/issues?q=${q}`);
+  let num;
   if (search.items?.length > 0) {
-    _issueNum = search.items[0].number;
-    return _issueNum;
+    num = search.items[0].number;
+  } else {
+    const created = await ghRequest(`/repos/${OWNER}/${REPO}/issues`, {
+      method: 'POST',
+      body: { title, body: 'Comments. Auto-managed.' },
+    });
+    num = created.number;
   }
-  const created = await ghRequest(`/repos/${OWNER}/${REPO}/issues`, {
-    method: 'POST',
-    body: { title: ISSUE_TITLE, body: 'Guestbook messages. Auto-managed.' },
-  });
-  _issueNum = created.number;
-  return _issueNum;
+  _issueCache.set(title, num);
+  return num;
 }
 
 // ── CORS ───────────────────────────────────────────────────────────
@@ -132,12 +134,17 @@ export const handler = async (event) => {
   }
 };
 
+function getIssueTitle(event) {
+  const params = event.queryStringParameters || {};
+  return (params.issue || DEFAULT_ISSUE).trim();
+}
+
 async function handleList(event, headers) {
   const params = event.queryStringParameters || {};
   const page = Math.max(1, parseInt(params.page, 10) || 1);
   const perPage = Math.min(100, Math.max(10, parseInt(params.per_page, 10) || 100));
 
-  const issueNum = await getIssueNumber();
+  const issueNum = await getIssueNumber(getIssueTitle(event));
   const comments = await ghRequest(
     `/repos/${OWNER}/${REPO}/issues/${issueNum}/comments?per_page=${perPage}&page=${page}&sort=created&direction=asc`
   );
@@ -201,7 +208,7 @@ async function handleCreate(event, headers) {
 
   const parentId = body.parent_id || '0';
 
-  const issueNum = await getIssueNumber();
+  const issueNum = await getIssueNumber(getIssueTitle(event));
   const avatarB64 = user.avatar ? Buffer.from(user.avatar).toString('base64url') : '';
   const formatted = `[${user.provider}|${user.name}|${avatarB64}|${parentId}] ${message}`;
   const comment = await ghRequest(`/repos/${OWNER}/${REPO}/issues/${issueNum}/comments`, {
@@ -233,7 +240,7 @@ async function handleDelete(event, headers) {
     return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing comment id(s)' }) };
   }
 
-  const issueNum = await getIssueNumber();
+  const issueNum = await getIssueNumber(getIssueTitle(event));
   const adminUid = process.env.ADMIN_GITHUB_UID || '';
   const isAdmin = adminUid && user.provider === 'github' && user.uid === adminUid;
   const deleted = [];
