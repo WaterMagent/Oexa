@@ -69,6 +69,10 @@ async function hmacSign(payload, secret) {
 async function verifySession(cookieHeader) {
   const cookies = parseCookies(cookieHeader);
   const token = cookies['gb_session'] || '';
+  return verifyTokenDirect(token);
+}
+
+async function verifyTokenDirect(token) {
   if (!token) return null;
 
   try {
@@ -185,8 +189,16 @@ async function handleList(headers) {
 }
 
 async function handleCreate(event, headers) {
-  // Verify session
-  const user = await verifySession(event.headers?.cookie || '');
+  // Verify session — check cookie first, then Authorization header
+  let user = await verifySession(event.headers?.cookie || '');
+  if (!user) {
+    // Try Bearer token from Authorization header
+    const authHeader = event.headers?.authorization || '';
+    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (bearerMatch) {
+      user = await verifyTokenDirect(bearerMatch[1]);
+    }
+  }
   if (!user) {
     return {
       statusCode: 401,

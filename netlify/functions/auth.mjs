@@ -404,12 +404,14 @@ async function handleCallback(event, params, headers) {
     ...mappedUser,
   };
 
-  // Create session
+  // Create session token
   const token = await createSessionToken(user);
+
+  // Also set cookie for /me endpoint compatibility
   const sessionCookie = getSessionCookie(token, SESSION_MAX_AGE);
 
-  // Redirect to guestbook page
-  const guestbookUrl = `${siteUrl}/guestbook`;
+  // Redirect to guestbook page with token in hash (bypasses cookie issues)
+  const guestbookUrl = `${siteUrl}/guestbook#gb_token=${encodeURIComponent(token)}`;
 
   return {
     statusCode: 302,
@@ -421,9 +423,18 @@ async function handleCallback(event, params, headers) {
 }
 
 async function handleMe(event, headers) {
+  // Check cookie first, then Authorization header
+  let token = '';
   const cookies = parseCookies(event.headers?.cookie || '');
-  const sessionToken = cookies[SESSION_COOKIE] || '';
-  if (!sessionToken) {
+  token = cookies[SESSION_COOKIE] || '';
+
+  if (!token) {
+    const authHeader = event.headers?.authorization || '';
+    const m = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (m) token = m[1];
+  }
+
+  if (!token) {
     return {
       statusCode: 200,
       headers: { ...headers, 'Content-Type': 'application/json' },
@@ -431,19 +442,13 @@ async function handleMe(event, headers) {
     };
   }
 
-  const user = await verifySessionToken(sessionToken);
-  if (!user) {
-    return {
-      statusCode: 200,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ authenticated: false }),
-    };
-  }
-
+  const user = await verifySessionToken(token);
   return {
     statusCode: 200,
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ authenticated: true, user }),
+    body: user
+      ? JSON.stringify({ authenticated: true, user })
+      : JSON.stringify({ authenticated: false }),
   };
 }
 

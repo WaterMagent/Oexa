@@ -71,6 +71,29 @@ import Layout from '../layouts/Layout.astro';
   const messageListEl = document.getElementById('message-list');
 
   let currentUser = null;
+  let sessionToken = null;
+
+  // ── Extract token from URL hash (set by OAuth callback) ──
+  (function extractToken() {
+    const hash = window.location.hash;
+    const m = hash.match(/[#&]gb_token=([^&]+)/);
+    if (m) {
+      sessionToken = decodeURIComponent(m[1]);
+      sessionStorage.setItem('gb_token', sessionToken);
+      // Clean URL
+      const url = new URL(window.location);
+      url.hash = url.hash.replace(/[#&]?gb_token=[^&]*/, '').replace(/^#&/, '#');
+      if (url.hash === '#') url.hash = '';
+      history.replaceState(null, '', url);
+    } else {
+      sessionToken = sessionStorage.getItem('gb_token') || '';
+    }
+  })();
+
+  // Helper: auth headers for API calls
+  function authHeaders() {
+    return sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
+  }
 
   // ── Provider Icons (inline SVG, no emoji) ──
   const PROVIDER_ICONS = {
@@ -127,7 +150,10 @@ import Layout from '../layouts/Layout.astro';
   // ── Auth Check ──
   async function checkAuth() {
     try {
-      const res = await fetch(`${API_AUTH}?action=me`, { credentials: 'include' });
+      const res = await fetch(`${API_AUTH}?action=me`, {
+        credentials: 'include',
+        headers: authHeaders(),
+      });
       const data = await res.json();
       if (data.authenticated && data.user) {
         currentUser = data.user;
@@ -228,7 +254,10 @@ import Layout from '../layouts/Layout.astro';
     try {
       const res = await fetch(API_GB, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(),
+        },
         credentials: 'include',
         body: JSON.stringify({ message: body }),
       });
