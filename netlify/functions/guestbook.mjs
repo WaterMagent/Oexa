@@ -132,28 +132,50 @@ export const handler = async (event) => {
 
 async function handleList(headers) {
   const issueNum = await getIssueNumber();
-  const comments = await ghRequest(`/repos/${OWNER}/${REPO}/issues/${issueNum}/comments?per_page=100&sort=created&direction=desc`);
+  const comments = await ghRequest(`/repos/${OWNER}/${REPO}/issues/${issueNum}/comments?per_page=100&sort=created&direction=asc`);
 
-  const messages = (Array.isArray(comments) ? comments : []).map((c) => {
-    // Default: bot identity (no avatar — we don't know the real user's)
+  const parsed = (Array.isArray(comments) ? comments : []).map((c) => {
     let author = { name: c.user.login, provider: 'github', avatar: '' };
     let body = c.body || '';
+    let parentId = '0';
 
-    // Try new format: [provider|username|avatar_b64] (avatar may be empty)
-    const mNew = body.match(/^\[([a-z]+)\|([^|]+)\|([^\]]*)\]\s*/i);
-    if (mNew) {
-      author = { name: mNew[2], provider: mNew[1], avatar: Buffer.from(mNew[3], 'base64url').toString('utf-8') };
-      body = body.slice(mNew[0].length);
+    // Try new format with parent_id: [provider|username|avatar|parent_id]
+    const mFull = body.match(/^\[([a-z]+)\|([^|]+)\|([^|]*)\|([^\]]*)\]\s*/i);
+    if (mFull) {
+      author = { name: mFull[2], provider: mFull[1], avatar: mFull[3] ? Buffer.from(mFull[3], 'base64url').toString('utf-8') : '' };
+      parentId = mFull[4] || '0';
+      body = body.slice(mFull[0].length);
     } else {
-      // Try old format: [provider:username]
-      const mOld = body.match(/^\[([a-z]+):([^\]]+)\]\s*/i);
-      if (mOld) {
-        author = { name: mOld[2], provider: mOld[1], avatar: '' };
-        body = body.slice(mOld[0].length);
+      // Try format without parent_id: [provider|username|avatar]
+      const mNew = body.match(/^\[([a-z]+)\|([^|]+)\|([^\]]*)\]\s*/i);
+      if (mNew) {
+        author = { name: mNew[2], provider: mNew[1], avatar: mNew[3] ? Buffer.from(mNew[3], 'base64url').toString('utf-8') : '' };
+        body = body.slice(mNew[0].length);
+      } else {
+        // Try old format: [provider:username]
+        const mOld = body.match(/^\[([a-z]+):([^\]]+)\]\s*/i);
+        if (mOld) {
+          author = { name: mOld[2], provider: mOld[1], avatar: '' };
+          body = body.slice(mOld[0].length);
+        }
       }
     }
-    return { id: c.id, author, body, created_at: c.created_at };
+    return { id: String(c.id), author, body, parentId, created_at: c.created_at };
   });
+
+  // Build threaded structure
+  const topLevel = parsed.filter((m) => m.parentId === '0');
+  const replies = parsed.filter((m) => m.parentId !== '0');
+  const replyMap = {};
+  for (const r of replies) {
+    if (!replyMap[r.parentId]) replyMap[r.parentId] = [];
+    replyMap[r.parentId].push(r);
+  }
+
+  const messages = topLevel.map((m) => ({
+    ...m,
+    replies: replyMap[m.id] || [],
+  }));
 
   return { statusCode: 200, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) };
 }
@@ -170,13 +192,15 @@ async function handleCreate(event, headers) {
   }
 
   const message = (body.message || '').trim();
-  if (!message || message.length > 500) {
-    return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Message must be 1-500 chars' }) };
+  if (!message || message.length > 2000) {
+    return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Message must be 1-2000 chars' }) };
   }
+
+  const parentId = body.parent_id || '0';
 
   const issueNum = await getIssueNumber();
   const avatarB64 = user.avatar ? Buffer.from(user.avatar).toString('base64url') : '';
-  const formatted = `[${user.provider}|${user.name}|${avatarB64}] ${message}`;
+  const formatted = `[${user.provider}|${user.name}|${avatarB64}|${parentId}] ${message}`;
   const comment = await ghRequest(`/repos/${OWNER}/${REPO}/issues/${issueNum}/comments`, {
     method: 'POST',
     body: { body: formatted },
@@ -187,7 +211,7 @@ async function handleCreate(event, headers) {
     headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ok: true,
-      message: { id: comment.id, author: { name: user.name, provider: user.provider, avatar: user.avatar }, body: message, created_at: comment.created_at },
+      message: { id: String(comment.id), author: { name: user.name, provider: user.provider, avatar: user.avatar }, body: message, parentId, replies: [], created_at: comment.created_at },
     }),
   };
 }
