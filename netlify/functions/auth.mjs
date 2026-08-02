@@ -1,14 +1,9 @@
 // Netlify Function: Multi-provider OAuth 2.0 handler
 //
-// Supports any OAuth 2.0 provider with standard endpoints.
-// Built-in providers: GitHub, Google, GitLab, Gitee.
-// Add custom providers via env vars: OAUTH_<NAME>_CLIENT_ID, etc.
-//
-// Actions:
-//   ?action=login&provider=xxx    — start OAuth flow
-//   ?action=callback              — handle OAuth callback
-//   ?action=me                    — return current user
-//   ?action=logout                — clear session
+// Uses Node.js crypto (not Web Crypto) for Netlify compatibility.
+// Actions: login, callback, me, logout, providers
+
+import { createHmac, createHash, randomBytes } from 'node:crypto';
 
 // ── Provider Registry ──────────────────────────────────────────────
 
@@ -19,26 +14,9 @@ const BUILTIN_PROVIDERS = {
     token_url: 'https://github.com/login/oauth/access_token',
     userinfo_url: 'https://api.github.com/user',
     scope: 'read:user',
-    // GitHub returns user info at /user, needs header Accept: application/json
     token_headers: { Accept: 'application/json' },
     userinfo_headers: { Accept: 'application/vnd.github.v3+json', 'User-Agent': 'guestbook' },
-    map_user: (data) => ({ uid: String(data.id), name: data.login, avatar: data.avatar_url }),
-  },
-  gitlab: {
-    name: 'GitLab',
-    authorize_url: 'https://gitlab.com/oauth/authorize',
-    token_url: 'https://gitlab.com/oauth/token',
-    userinfo_url: 'https://gitlab.com/api/v4/user',
-    scope: 'read_user',
-    map_user: (data) => ({ uid: String(data.id), name: data.username, avatar: data.avatar_url }),
-  },
-  google: {
-    name: 'Google',
-    authorize_url: 'https://accounts.google.com/o/oauth2/v2/auth',
-    token_url: 'https://oauth2.googleapis.com/token',
-    userinfo_url: 'https://www.googleapis.com/oauth2/v2/userinfo',
-    scope: 'openid profile',
-    map_user: (data) => ({ uid: data.id, name: data.name || data.email, avatar: data.picture }),
+    map_user: (d) => ({ uid: String(d.id), name: d.login, avatar: d.avatar_url }),
   },
   gitee: {
     name: 'Gitee',
@@ -46,59 +24,62 @@ const BUILTIN_PROVIDERS = {
     token_url: 'https://gitee.com/oauth/token',
     userinfo_url: 'https://gitee.com/api/v5/user',
     scope: 'user_info',
-    map_user: (data) => ({ uid: String(data.id), name: data.login || data.name, avatar: data.avatar_url }),
+    map_user: (d) => ({ uid: String(d.id), name: d.login || d.name, avatar: d.avatar_url }),
+  },
+  gitlab: {
+    name: 'GitLab',
+    authorize_url: 'https://gitlab.com/oauth/authorize',
+    token_url: 'https://gitlab.com/oauth/token',
+    userinfo_url: 'https://gitlab.com/api/v4/user',
+    scope: 'read_user',
+    map_user: (d) => ({ uid: String(d.id), name: d.username, avatar: d.avatar_url }),
+  },
+  google: {
+    name: 'Google',
+    authorize_url: 'https://accounts.google.com/o/oauth2/v2/auth',
+    token_url: 'https://oauth2.googleapis.com/token',
+    userinfo_url: 'https://www.googleapis.com/oauth2/v2/userinfo',
+    scope: 'openid profile',
+    map_user: (d) => ({ uid: d.id, name: d.name || d.email, avatar: d.picture }),
   },
 };
 
-// ── Helpers ────────────────────────────────────────────────────────
+// ── Crypto Helpers (Node.js crypto) ───────────────────────────────
 
-function base64url(bytes) {
-  const str = btoa(String.fromCharCode(...new Uint8Array(bytes)));
-  return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+function base64url(buf) {
+  return Buffer.from(buf).toString('base64url');
 }
 
 function base64urlDecode(str) {
-  str = str.replace(/-/g, '+').replace(/_/g, '/');
-  while (str.length % 4) str += '=';
-  return Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
+  return Buffer.from(str, 'base64url');
 }
 
-function randomString(length) {
+function randomString(len) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-  const arr = new Uint8Array(length);
-  crypto.getRandomValues(arr);
-  return Array.from(arr, (b) => chars[b % chars.length]).join('');
+  const bytes = randomBytes(len);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join('');
 }
 
-async function sha256(input) {
-  const enc = new TextEncoder().encode(input);
-  return new Uint8Array(await crypto.subtle.digest('SHA-256', enc));
+function sha256(input) {
+  return createHash('sha256').update(input).digest();
 }
 
-async function hmacSign(payload, secret) {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(payload));
-  return new Uint8Array(sig);
+function hmacSign(payload, secret) {
+  return createHmac('sha256', secret).update(payload).digest();
 }
 
 // ── Session Token ──────────────────────────────────────────────────
 
-const SESSION_COOKIE = 'gb_session';
-const SESSION_MAX_AGE = 7 * 24 * 3600; // 7 days
+const SESSION_MAX_AGE = 7 * 24 * 3600;
 
 function getJwtSecret() {
   return process.env.OAUTH_JWT_SECRET || 'dev-secret-change-me-in-production';
 }
 
 async function createSessionToken(user) {
-  const payload = {
-    ...user,
-    exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE,
-  };
-  const payloadStr = JSON.stringify(payload);
-  const payloadB64 = base64url(new TextEncoder().encode(payloadStr));
-  const sig = base64url(await hmacSign(payloadB64, getJwtSecret()));
+  const payload = JSON.stringify({ ...user, exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE });
+  const payloadB64 = base64url(payload);
+  const sig = base64url(hmacSign(payloadB64, getJwtSecret()));
   return `${payloadB64}.${sig}`;
 }
 
@@ -106,26 +87,13 @@ async function verifySessionToken(token) {
   try {
     const [payloadB64, sigB64] = token.split('.');
     if (!payloadB64 || !sigB64) return null;
-    const expectedSig = base64url(await hmacSign(payloadB64, getJwtSecret()));
+    const expectedSig = base64url(hmacSign(payloadB64, getJwtSecret()));
     if (sigB64 !== expectedSig) return null;
-    const payloadStr = new TextDecoder().decode(base64urlDecode(payloadB64));
+    const payloadStr = base64urlDecode(payloadB64).toString('utf-8');
     const payload = JSON.parse(payloadStr);
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
     return { provider: payload.provider, uid: payload.uid, name: payload.name, avatar: payload.avatar };
-  } catch {
-    return null;
-  }
-}
-
-function getSessionCookie(token, maxAge) {
-  const isLocal = (process.env.SITE_URL || '').includes('localhost');
-  return [
-    `${SESSION_COOKIE}=${token}`,
-    'HttpOnly',
-    'Path=/',
-    `Max-Age=${maxAge}`,
-    ...(isLocal ? ['SameSite=Lax'] : ['SameSite=None', 'Secure']),
-  ].join('; ');
+  } catch { return null; }
 }
 
 // ── Provider Resolution ────────────────────────────────────────────
@@ -134,70 +102,51 @@ function getProvider(name) {
   const builtin = BUILTIN_PROVIDERS[name.toLowerCase()];
   const prefix = `OAUTH_${name.toUpperCase()}`;
   const clientId = process.env[`${prefix}_CLIENT_ID`];
-  const clientSecret = process.env[`${prefix}_CLIENT_SECRET`];
 
   if (builtin) {
-    // Env overrides for built-in providers
     return {
       ...builtin,
-      client_id: clientId || process.env[`OAUTH_${builtin.name.toUpperCase()}_CLIENT_ID`],
-      client_secret: clientSecret || process.env[`OAUTH_${builtin.name.toUpperCase()}_CLIENT_SECRET`],
+      client_id: clientId,
+      client_secret: process.env[`${prefix}_CLIENT_SECRET`],
     };
   }
-
-  // Custom provider — all endpoints from env vars
-  if (clientId && clientSecret) {
+  // Custom provider
+  if (clientId && process.env[`${prefix}_CLIENT_SECRET`]) {
     return {
-      name: name,
+      name,
       authorize_url: process.env[`${prefix}_AUTHORIZE_URL`],
       token_url: process.env[`${prefix}_TOKEN_URL`],
       userinfo_url: process.env[`${prefix}_USERINFO_URL`],
       scope: process.env[`${prefix}_SCOPE`] || 'profile',
       client_id: clientId,
-      client_secret: clientSecret,
-      map_user: (data) => ({
-        uid: String(data.id || data.sub || data.user_id),
-        name: data.name || data.login || data.username || data.email,
-        avatar: data.avatar || data.avatar_url || data.picture || '',
+      client_secret: process.env[`${prefix}_CLIENT_SECRET`],
+      map_user: (d) => ({
+        uid: String(d.id || d.sub || d.user_id),
+        name: d.name || d.login || d.username || d.email,
+        avatar: d.avatar || d.avatar_url || d.picture || '',
       }),
     };
   }
-
   return null;
 }
 
-// Get all configured (enabled) providers for the login UI
 function getConfiguredProviders() {
   const names = new Set(Object.keys(BUILTIN_PROVIDERS));
-
-  // Also scan env for custom providers
   for (const key of Object.keys(process.env)) {
     const m = key.match(/^OAUTH_([A-Z][A-Z0-9]*)_CLIENT_ID$/);
-    if (m) {
-      const name = m[1].toLowerCase();
-      if (!BUILTIN_PROVIDERS[name]) names.add(name);
-    }
+    if (m) names.add(m[1].toLowerCase());
   }
-
   const result = [];
   for (const name of names) {
     const p = getProvider(name);
     if (p && p.client_id) result.push({ key: name, name: p.name });
   }
-  // Sort: built-in providers first, then custom
-  const builtinOrder = ['github', 'google', 'gitlab', 'gitee'];
-  result.sort((a, b) => {
-    const ai = builtinOrder.indexOf(a.key);
-    const bi = builtinOrder.indexOf(b.key);
-    if (ai >= 0 && bi >= 0) return ai - bi;
-    if (ai >= 0) return -1;
-    if (bi >= 0) return 1;
-    return a.key.localeCompare(b.key);
-  });
+  const order = ['github', 'google', 'gitlab', 'gitee'];
+  result.sort((a, b) => (order.indexOf(a.key) ?? 99) - (order.indexOf(b.key) ?? 99));
   return result;
 }
 
-// ── CORS Helper ────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────
 
 function corsHeaders(origin) {
   const allowed = process.env.SITE_URL || origin || '*';
@@ -205,288 +154,161 @@ function corsHeaders(origin) {
     'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
+}
+
+function parseCookies(h) {
+  const out = {};
+  if (!h) return out;
+  for (const part of h.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx > 0) out[part.slice(0, idx).trim()] = part.slice(idx + 1).trim();
+  }
+  return out;
 }
 
 // ── Main Handler ───────────────────────────────────────────────────
 
 export const handler = async (event) => {
-  const headers = corsHeaders(event.headers?.origin);
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers };
-  }
+  const h = corsHeaders(event.headers?.origin);
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: h };
 
   const params = event.queryStringParameters || {};
   const action = params.action || '';
 
   try {
     switch (action) {
-      case 'login':
-        return handleLogin(event, params, headers);
-      case 'callback':
-        return await handleCallback(event, params, headers);
-      case 'me':
-        return await handleMe(event, headers);
-      case 'logout':
-        return handleLogout(params, headers);
-      case 'providers':
-        return handleProviders(headers);
-      default:
-        return {
-          statusCode: 200,
-          headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            providers: getConfiguredProviders(),
-            authenticated: false,
-            endpoints: { login: '?action=login&provider=NAME', me: '?action=me', logout: '?action=logout' },
-          }),
-        };
+      case 'login':       return await handleLogin(event, params, h);
+      case 'callback':    return await handleCallback(event, params, h);
+      case 'me':          return await handleMe(event, h);
+      case 'logout':      return handleLogout(params, h);
+      case 'providers':   return { statusCode: 200, headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ providers: getConfiguredProviders() }) };
+      default:            return { statusCode: 200, headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ providers: getConfiguredProviders(), authenticated: false }) };
     }
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message }),
-    };
+    return { statusCode: 500, headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: err.message }) };
   }
 };
 
-// ── Actions ────────────────────────────────────────────────────────
+// ── Login ──────────────────────────────────────────────────────────
 
 async function handleLogin(event, params, headers) {
-  const providerName = (params.provider || '').toLowerCase();
-  const provider = getProvider(providerName);
-  if (!provider) {
-    return {
-      statusCode: 400,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: `Unknown or unconfigured provider: ${providerName}` }),
-    };
-  }
+  const name = (params.provider || '').toLowerCase();
+  const p = getProvider(name);
+  if (!p) return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: `Unknown provider: ${name}` }) };
 
-  // Generate PKCE
-  const codeVerifier = randomString(64);
+  const verifier = randomString(64);
   const state = randomString(32);
-
-  // Build redirect URI for callback
   const siteUrl = process.env.SITE_URL || `https://${event.headers.host}`;
   const redirectUri = `${siteUrl}/.netlify/functions/auth?action=callback`;
+  const challenge = base64url(sha256(verifier));
 
-  // Build authorize URL
   const authParams = new URLSearchParams({
-    client_id: provider.client_id,
+    client_id: p.client_id,
     redirect_uri: redirectUri,
     response_type: 'code',
     state,
-    scope: provider.scope || 'profile',
+    scope: p.scope || 'profile',
     code_challenge_method: 'S256',
+    code_challenge: challenge,
   });
 
-  const hash = await sha256(codeVerifier);
-  authParams.set('code_challenge', base64url(hash));
-  const url = `${provider.authorize_url}?${authParams.toString()}`;
+  const url = `${p.authorize_url}?${authParams.toString()}`;
+  const cookie = `gb_oauth=${name}:${verifier}:${state}; HttpOnly; Path=/; Max-Age=600; SameSite=Lax`;
 
-  // Store provider:code_verifier:state in a temporary cookie (HttpOnly, 10 min)
-  const cookieVal = `${providerName}:${codeVerifier}:${state}`;
-  const isLocal = (process.env.SITE_URL || '').includes('localhost');
-  const stateCookie = [
-    `gb_oauth=${cookieVal}`,
-    'HttpOnly',
-    'Path=/',
-    'Max-Age=600',
-    'SameSite=Lax',
-    ...(isLocal ? [] : ['Secure']),
-  ].join('; ');
-
-  return {
-    statusCode: 302,
-    headers: {
-      ...headers,
-      Location: url,
-      'Set-Cookie': stateCookie,
-    },
-  };
+  return { statusCode: 302, headers: { ...headers, Location: url, 'Set-Cookie': cookie } };
 }
+
+// ── Callback ───────────────────────────────────────────────────────
 
 async function handleCallback(event, params, headers) {
   const code = params.code;
   const state = params.state;
+  if (!code) return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing code' }) };
 
-  if (!code) {
-    return {
-      statusCode: 400,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Missing authorization code' }),
-    };
-  }
-
-  // Parse the oauth cookie: format is "provider:code_verifier:state"
   const cookies = parseCookies(event.headers?.cookie || '');
-  const oauthCookie = cookies['gb_oauth'] || '';
-  const parts = oauthCookie.split(':');
-  const providerName = parts[0];
-  const codeVerifier = parts[1];
-  const expectedState = parts[2];
+  const oauth = (cookies['gb_oauth'] || '').split(':');
+  const [providerName, codeVerifier, expectedState] = oauth;
 
   if (!providerName || !codeVerifier) {
-    return {
-      statusCode: 400,
-      headers: { ...headers, 'Content-Type': 'text/html' },
-      body: '<html><body><p>Session expired. Please try logging in again.</p><script>setTimeout(function(){location.href="/guestbook"},2000)</script></body></html>',
-    };
+    return { statusCode: 400, headers: { ...headers, 'Content-Type': 'text/html' }, body: '<html><body><p>Session expired. <a href="/guestbook">Try again</a></p></body></html>' };
   }
-
-  // Validate state to prevent CSRF
   if (state && expectedState && state !== expectedState) {
-    return {
-      statusCode: 400,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'State mismatch' }),
-    };
+    return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'State mismatch' }) };
   }
 
-  const provider = getProvider(providerName);
-  if (!provider) {
-    return {
-      statusCode: 400,
-      headers: { ...headers, 'Content-Type': 'text/html' },
-      body: '<html><body><p>Unknown provider. Please try logging in again.</p><script>setTimeout(function(){location.href="/guestbook"},2000)</script></body></html>',
-    };
-  }
+  const p = getProvider(providerName);
+  if (!p) return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Unknown provider' }) };
 
-  // Exchange code for token
   const siteUrl = process.env.SITE_URL || `https://${event.headers.host}`;
   const redirectUri = `${siteUrl}/.netlify/functions/auth?action=callback`;
 
+  // Exchange code for token
   const tokenBody = new URLSearchParams({
-    client_id: provider.client_id,
-    client_secret: provider.client_secret,
+    client_id: p.client_id,
+    client_secret: p.client_secret,
     code,
     redirect_uri: redirectUri,
     grant_type: 'authorization_code',
     code_verifier: codeVerifier,
   });
 
-  const tokenHeaders = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    ...(provider.token_headers || {}),
-  };
-
-  const tokenRes = await fetch(provider.token_url, {
+  const tokenRes = await fetch(p.token_url, {
     method: 'POST',
-    headers: tokenHeaders,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...(p.token_headers || {}) },
     body: tokenBody.toString(),
   });
-
   const tokenData = await tokenRes.json().catch(() => ({}));
-
   if (!tokenData.access_token) {
-    return {
-      statusCode: 400,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Token exchange failed', details: tokenData }),
-    };
+    return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Token exchange failed', details: tokenData }) };
   }
 
   // Fetch user info
-  const userHeaders = {
-    Authorization: `Bearer ${tokenData.access_token}`,
-    ...(provider.userinfo_headers || {}),
-  };
-
-  const userRes = await fetch(provider.userinfo_url, { headers: userHeaders });
+  const userRes = await fetch(p.userinfo_url, {
+    headers: { Authorization: `Bearer ${tokenData.access_token}`, ...(p.userinfo_headers || {}) },
+  });
   const userData = await userRes.json().catch(() => ({}));
+  const mapped = (p.map_user || ((d) => ({ uid: d.id, name: d.name, avatar: '' })))(userData);
 
-  const mappedUser = (provider.map_user || ((d) => ({ uid: d.id, name: d.name, avatar: '' })))(userData);
-  const user = {
-    provider: providerName,
-    ...mappedUser,
-  };
-
-  // Create session token
-  const token = await createSessionToken(user);
-
-  // Set a JS-readable cookie so the client can send it as Authorization header
-  const jsTokenCookie = [
-    `gb_token=${token}`,
-    'Path=/',
-    `Max-Age=${SESSION_MAX_AGE}`,
-    'SameSite=Lax',
-  ].join('; ');
-
-  // Redirect to guestbook page
+  // Create session & redirect
+  const token = await createSessionToken({ provider: providerName, ...mapped });
+  const cookie = `gb_token=${token}; Path=/; Max-Age=${SESSION_MAX_AGE}; SameSite=Lax`;
   const guestbookUrl = `${siteUrl}/guestbook`;
 
-  return {
-    statusCode: 302,
-    headers: {
-      Location: guestbookUrl,
-      'Set-Cookie': jsTokenCookie,
-    },
-  };
+  return { statusCode: 302, headers: { ...headers, Location: guestbookUrl, 'Set-Cookie': cookie } };
 }
 
-async function handleMe(event, headers) {
-  // Check cookies first (gb_session or gb_token), then Authorization header
-  let token = '';
-  const cookies = parseCookies(event.headers?.cookie || '');
-  token = cookies[SESSION_COOKIE] || cookies['gb_token'] || '';
+// ── Me ─────────────────────────────────────────────────────────────
 
+async function handleMe(event, headers) {
+  // Try cookie first, then Authorization header
+  const cookies = parseCookies(event.headers?.cookie || '');
+  let token = cookies['gb_session'] || cookies['gb_token'] || '';
   if (!token) {
-    const authHeader = event.headers?.authorization || '';
-    const m = authHeader.match(/^Bearer\s+(.+)$/i);
+    const m = (event.headers?.authorization || '').match(/^Bearer\s+(.+)$/i);
     if (m) token = m[1];
   }
 
-  if (!token) {
-    return {
-      statusCode: 200,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ authenticated: false }),
-    };
-  }
-
-  const user = await verifySessionToken(token);
+  const user = token ? await verifySessionToken(token) : null;
   return {
     statusCode: 200,
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: user
-      ? JSON.stringify({ authenticated: true, user })
-      : JSON.stringify({ authenticated: false }),
+    body: JSON.stringify(user ? { authenticated: true, user } : { authenticated: false }),
   };
 }
+
+// ── Logout ─────────────────────────────────────────────────────────
 
 function handleLogout(params, headers) {
   const redirect = params.redirect || '/guestbook';
   const siteUrl = process.env.SITE_URL || '';
-  const clearCookie = `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0`;
   return {
     statusCode: 302,
     headers: {
       ...headers,
       Location: `${siteUrl}${redirect}`,
-      'Set-Cookie': clearCookie,
+      'Set-Cookie': 'gb_token=; Path=/; Max-Age=0',
     },
   };
-}
-
-function handleProviders(headers) {
-  return {
-    statusCode: 200,
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ providers: getConfiguredProviders() }),
-  };
-}
-
-// ── Cookie Parser ──────────────────────────────────────────────────
-
-function parseCookies(cookieHeader) {
-  const out = {};
-  if (!cookieHeader) return out;
-  for (const part of cookieHeader.split(';')) {
-    const idx = part.indexOf('=');
-    if (idx > 0) out[part.slice(0, idx).trim()] = part.slice(idx + 1).trim();
-  }
-  return out;
 }
