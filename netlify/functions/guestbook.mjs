@@ -135,10 +135,14 @@ async function handleList(headers) {
   const comments = await ghRequest(`/repos/${OWNER}/${REPO}/issues/${issueNum}/comments?per_page=100&sort=created&direction=desc`);
 
   const messages = (Array.isArray(comments) ? comments : []).map((c) => {
-    let author = { name: c.user.login, provider: 'github', avatar: c.user.avatar_url };
+    let author = { name: c.user.login, provider: 'github', avatar: '' };
     let body = c.body || '';
-    const m = body.match(/^\[([a-z]+):([^\]]+)\]\s*/i);
-    if (m) { author = { ...author, provider: m[1], name: m[2] }; body = body.slice(m[0].length); }
+    // Format: [provider|username|avatar_b64] message
+    const m = body.match(/^\[([a-z]+)\|([^|]+)\|([^\]]+)\]\s*/i);
+    if (m) {
+      author = { name: m[2], provider: m[1], avatar: Buffer.from(m[3], 'base64url').toString('utf-8') };
+      body = body.slice(m[0].length);
+    }
     return { id: c.id, author, body, created_at: c.created_at };
   });
 
@@ -162,7 +166,8 @@ async function handleCreate(event, headers) {
   }
 
   const issueNum = await getIssueNumber();
-  const formatted = `[${user.provider}:${user.name}] ${message}`;
+  const avatarB64 = Buffer.from(user.avatar || '').toString('base64url');
+  const formatted = `[${user.provider}|${user.name}|${avatarB64}] ${message}`;
   const comment = await ghRequest(`/repos/${OWNER}/${REPO}/issues/${issueNum}/comments`, {
     method: 'POST',
     body: { body: formatted },
