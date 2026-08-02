@@ -122,7 +122,7 @@ export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: h };
 
   try {
-    if (event.httpMethod === 'GET') return await handleList(h);
+    if (event.httpMethod === 'GET') return await handleList(event, h);
     if (event.httpMethod === 'POST') return await handleCreate(event, h);
     return { statusCode: 405, headers: h, body: 'Method Not Allowed' };
   } catch (err) {
@@ -130,54 +130,55 @@ export const handler = async (event) => {
   }
 };
 
-async function handleList(headers) {
+async function handleList(event, headers) {
+  const params = event.queryStringParameters || {};
+  const page = Math.max(1, parseInt(params.page, 10) || 1);
+  const perPage = Math.min(100, Math.max(10, parseInt(params.per_page, 10) || 100));
+
   const issueNum = await getIssueNumber();
-  const comments = await ghRequest(`/repos/${OWNER}/${REPO}/issues/${issueNum}/comments?per_page=100&sort=created&direction=asc`);
+  const comments = await ghRequest(
+    `/repos/${OWNER}/${REPO}/issues/${issueNum}/comments?per_page=${perPage}&page=${page}&sort=created&direction=asc`
+  );
 
-  const parsed = (Array.isArray(comments) ? comments : []).map((c) => {
-    let author = { name: c.user.login, provider: 'github', avatar: '' };
-    let body = c.body || '';
-    let parentId = '0';
+  const messages = (Array.isArray(comments) ? comments : []).map((c) => parseComment(c));
+  const hasMore = messages.length >= perPage;
 
-    // Try new format with parent_id: [provider|username|avatar|parent_id]
-    const mFull = body.match(/^\[([a-z]+)\|([^|]+)\|([^|]*)\|([^\]]*)\]\s*/i);
-    if (mFull) {
-      author = { name: mFull[2], provider: mFull[1], avatar: mFull[3] ? Buffer.from(mFull[3], 'base64url').toString('utf-8') : '' };
-      parentId = mFull[4] || '0';
-      body = body.slice(mFull[0].length);
-    } else {
-      // Try format without parent_id: [provider|username|avatar]
-      const mNew = body.match(/^\[([a-z]+)\|([^|]+)\|([^\]]*)\]\s*/i);
-      if (mNew) {
-        author = { name: mNew[2], provider: mNew[1], avatar: mNew[3] ? Buffer.from(mNew[3], 'base64url').toString('utf-8') : '' };
-        body = body.slice(mNew[0].length);
-      } else {
-        // Try old format: [provider:username]
-        const mOld = body.match(/^\[([a-z]+):([^\]]+)\]\s*/i);
-        if (mOld) {
-          author = { name: mOld[2], provider: mOld[1], avatar: '' };
-          body = body.slice(mOld[0].length);
-        }
-      }
-    }
-    return { id: String(c.id), author, body, parentId, created_at: c.created_at };
-  });
+  return {
+    statusCode: 200,
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, page, hasMore }),
+  };
+}
 
-  // Build threaded structure
-  const topLevel = parsed.filter((m) => m.parentId === '0');
-  const replies = parsed.filter((m) => m.parentId !== '0');
-  const replyMap = {};
-  for (const r of replies) {
-    if (!replyMap[r.parentId]) replyMap[r.parentId] = [];
-    replyMap[r.parentId].push(r);
+function parseComment(c) {
+  let author = { name: c.user.login, provider: 'github', avatar: '' };
+  let body = c.body || '';
+  let parentId = '0';
+
+  // Format: [provider|username|avatar|parent_id]
+  //   or: [provider|username|avatar]
+  //   or: [provider:username]
+  const mFull = body.match(/^\[([a-z]+)\|([^|]+)\|([^|]*)\|([^\]]*)\]\s*/i);
+  const m3 = body.match(/^\[([a-z]+)\|([^|]+)\|([^\]]*)\]\s*/i);
+  const mOld = body.match(/^\[([a-z]+):([^\]]+)\]\s*/i);
+
+  if (mFull) {
+    author = { name: mFull[2], provider: mFull[1], avatar: mFull[3] ? safeB64Decode(mFull[3]) : '' };
+    parentId = mFull[4] || '0';
+    body = body.slice(mFull[0].length);
+  } else if (m3) {
+    author = { name: m3[2], provider: m3[1], avatar: m3[3] ? safeB64Decode(m3[3]) : '' };
+    body = body.slice(m3[0].length);
+  } else if (mOld) {
+    author = { name: mOld[2], provider: mOld[1], avatar: '' };
+    body = body.slice(mOld[0].length);
   }
 
-  const messages = topLevel.map((m) => ({
-    ...m,
-    replies: replyMap[m.id] || [],
-  }));
+  return { id: String(c.id), author, body, parentId, created_at: c.created_at };
+}
 
-  return { statusCode: 200, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) };
+function safeB64Decode(s) {
+  try { return Buffer.from(s, 'base64url').toString('utf-8'); } catch { return ''; }
 }
 
 async function handleCreate(event, headers) {

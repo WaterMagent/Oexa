@@ -267,24 +267,78 @@ import Layout from '../layouts/Layout.astro';
   });
 
   // ── Load Messages ──
-  async function loadMessages() {
+  let allMessages = [];
+  let currentMsgPage = 1;
+  const MSG_PER_PAGE = 20;
+
+  async function loadAllMessages() {
     messageListEl.innerHTML = '<div class="loading">加载留言中...</div>';
+    let flat = [];
+    let page = 1;
+
     try {
-      const res = await fetch(API_GB, { credentials: 'include' });
-      const data = await res.json();
-      const messages = data.messages || [];
-      renderMessages(messages);
+      while (true) {
+        const res = await fetch(`${API_GB}?page=${page}&per_page=100`, { credentials: 'include' });
+        const data = await res.json();
+        if (data.messages) flat = flat.concat(data.messages);
+        if (!data.hasMore) break;
+        page++;
+        if (page > 5) break;
+      }
+      // Thread: build reply tree from flat list
+      const idSet = new Set(flat.map((m) => m.id));
+      const replyMap = {};
+      const topLevel = [];
+      for (const m of flat) {
+        if (m.parentId === '0' || !idSet.has(m.parentId)) {
+          topLevel.push(m);
+        } else {
+          if (!replyMap[m.parentId]) replyMap[m.parentId] = [];
+          replyMap[m.parentId].push(m);
+        }
+      }
+      allMessages = topLevel.map((m) => ({ ...m, replies: replyMap[m.id] || [] }));
+      currentMsgPage = 1;
+      renderPage();
     } catch {
       messageListEl.innerHTML = '<div class="error-msg">无法加载留言。API 未连接。</div>';
     }
   }
 
-  function renderMessages(messages) {
-    if (!messages.length) {
+  function renderPage() {
+    const totalPages = Math.ceil(allMessages.length / MSG_PER_PAGE) || 1;
+    if (currentMsgPage > totalPages) currentMsgPage = totalPages;
+    if (currentMsgPage < 1) currentMsgPage = 1;
+
+    const start = (currentMsgPage - 1) * MSG_PER_PAGE;
+    const pageMessages = allMessages.slice(start, start + MSG_PER_PAGE);
+
+    if (!pageMessages.length) {
       messageListEl.innerHTML = '<div class="empty-msg">还没有留言，来写下第一条吧。</div>';
-      return;
+    } else {
+      messageListEl.innerHTML = pageMessages.map((m) => renderMessageCard(m, true)).join('');
     }
-    messageListEl.innerHTML = messages.map((m) => renderMessageCard(m, true)).join('');
+
+    // Pagination controls
+    let pagEl = document.getElementById('msg-pagination');
+    if (!pagEl) {
+      pagEl = document.createElement('div');
+      pagEl.id = 'msg-pagination';
+      pagEl.className = 'msg-pagination';
+      messageListEl.after(pagEl);
+    }
+    if (totalPages <= 1) {
+      pagEl.style.display = 'none';
+    } else {
+      pagEl.style.display = 'flex';
+      pagEl.innerHTML = `
+        <button class="page-btn" ${currentMsgPage <= 1 ? 'disabled' : ''} id="msg-prev">上一页</button>
+        <span class="page-info">${currentMsgPage} / ${totalPages}</span>
+        <button class="page-btn" ${currentMsgPage >= totalPages ? 'disabled' : ''} id="msg-next">下一页</button>
+      `;
+      document.getElementById('msg-prev')?.addEventListener('click', () => { currentMsgPage--; renderPage(); window.scrollTo(0, messageListEl.offsetTop - 80); });
+      document.getElementById('msg-next')?.addEventListener('click', () => { currentMsgPage++; renderPage(); window.scrollTo(0, messageListEl.offsetTop - 80); });
+    }
   }
 
   function renderMessageCard(m, isTop) {
@@ -306,7 +360,7 @@ import Layout from '../layouts/Layout.astro';
           <span class="message-date">${date}</span>
         </div>
         <div class="message-body">${renderMarkdown(m.body)}</div>
-        ${replyBtn ? `<div class="message-actions">${replyBtn}</div>` : ''}
+        <div class="message-actions">${replyBtn}</div>
         ${repliesHtml ? `<div class="message-replies">${repliesHtml}</div>` : ''}
       </div>
     `;
@@ -344,7 +398,7 @@ import Layout from '../layouts/Layout.astro';
       messageInput.value = '';
       charCount.textContent = '0/2000';
       cancelReply();
-      await loadMessages();
+      await loadAllMessages();
     } catch (err) {
       alert(err.message || '留言发送失败，请稍后再试。');
     }
@@ -395,7 +449,7 @@ import Layout from '../layouts/Layout.astro';
   // ── Init ──
   loadProviders();
   checkAuth();
-  loadMessages();
+  loadAllMessages();
 })();
 </script>
 
@@ -799,6 +853,46 @@ import Layout from '../layouts/Layout.astro';
   .message-body .katex { font-size: 1.05em; }
   .message-body table { border-collapse: collapse; margin: 0.5rem 0; font-size: 0.9rem; }
   .message-body th, .message-body td { border: 1px solid var(--border); padding: 0.3rem 0.6rem; }
+
+  /* ── Pagination ── */
+  .msg-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.5rem 0 0.5rem;
+  }
+
+  .msg-pagination .page-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(16, 16, 28, 0.6);
+    color: var(--text);
+    font-size: 0.82rem;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .msg-pagination .page-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+
+  .msg-pagination .page-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+
+  .msg-pagination .page-info {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    min-width: 80px;
+    text-align: center;
+  }
 
   @media (max-width: 768px) {
     .guestbook-title { font-size: 1.8rem; }
