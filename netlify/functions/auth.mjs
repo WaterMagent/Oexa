@@ -16,7 +16,7 @@ const BUILTIN_PROVIDERS = {
     scope: 'read:user',
     token_headers: { Accept: 'application/json' },
     userinfo_headers: { Accept: 'application/vnd.github.v3+json', 'User-Agent': 'guestbook' },
-    map_user: (d) => ({ uid: String(d.id), name: d.login, avatar: d.avatar_url }),
+    map_user: (d) => ({ uid: String(d.id), name: d.name || d.login, avatar: d.avatar_url }),
   },
   gitee: {
     name: 'Gitee',
