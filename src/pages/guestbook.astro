@@ -271,6 +271,23 @@ import Layout from '../layouts/Layout.astro';
   let currentMsgPage = 1;
   const MSG_PER_PAGE = 20;
 
+  function getPageFromURL() {
+    const p = parseInt(new URLSearchParams(window.location.search).get('page'), 10);
+    return p > 0 ? p : 1;
+  }
+
+  function syncPageURL(page) {
+    const url = new URL(window.location);
+    if (page > 1) url.searchParams.set('page', String(page));
+    else url.searchParams.delete('page');
+    history.replaceState(null, '', url);
+  }
+
+  window.addEventListener('popstate', () => {
+    const p = getPageFromURL();
+    if (p !== currentMsgPage) { currentMsgPage = p; renderPage(); }
+  });
+
   async function loadAllMessages() {
     messageListEl.innerHTML = '<div class="loading">加载留言中...</div>';
     let flat = [];
@@ -301,8 +318,9 @@ import Layout from '../layouts/Layout.astro';
         const replies = (replyMap[msg.id] || []).map((r) => thread(r));
         return { ...msg, replies };
       }
-      allMessages = topLevel.map((m) => thread(m));
-      currentMsgPage = 1;
+      // Newest first
+      allMessages = topLevel.reverse().map((m) => thread(m));
+      currentMsgPage = getPageFromURL();
       renderPage();
     } catch {
       messageListEl.innerHTML = '<div class="error-msg">无法加载留言。API 未连接。</div>';
@@ -322,6 +340,8 @@ import Layout from '../layouts/Layout.astro';
     } else {
       messageListEl.innerHTML = pageMessages.map((m) => renderMessageCard(m, true)).join('');
     }
+
+    syncPageURL(currentMsgPage);
 
     // Pagination controls
     let pagEl = document.getElementById('msg-pagination');
@@ -351,7 +371,17 @@ import Layout from '../layouts/Layout.astro';
       hour: '2-digit', minute: '2-digit',
     });
     const replyBtn = `<button class="btn-reply" data-id="${m.id}" data-name="${escapeAttr(m.author.name)}">回复</button>`;
-    const repliesHtml = (m.replies || []).map((r) => renderMessageCard(r, false)).join('');
+    const replyCount = (m.replies || []).length;
+
+    let repliesSection = '';
+    if (replyCount > 0) {
+      const repliesRendered = m.replies.map((r) => renderMessageCard(r, false)).join('');
+      repliesSection = `
+        <button class="btn-toggle-replies" data-id="${m.id}">
+          查看 ${replyCount} 条回复
+        </button>
+        <div class="message-replies" id="replies-${m.id}" style="display:none">${repliesRendered}</div>`;
+    }
 
     return `
       <div class="message-card${isTop ? '' : ' message-reply'}" id="msg-${m.id}">
@@ -365,7 +395,7 @@ import Layout from '../layouts/Layout.astro';
         </div>
         <div class="message-body">${renderMarkdown(m.body)}</div>
         <div class="message-actions">${replyBtn}</div>
-        ${repliesHtml ? `<div class="message-replies">${repliesHtml}</div>` : ''}
+        ${repliesSection}
       </div>
     `;
   }
@@ -442,11 +472,23 @@ import Layout from '../layouts/Layout.astro';
 
   cancelReplyBtn.addEventListener('click', cancelReply);
 
-  // Event delegation for reply buttons (they're rendered dynamically)
+  // Event delegation for reply buttons and toggle-replies
   messageListEl.addEventListener('click', (e) => {
     const btn = e.target.closest('.btn-reply');
     if (btn) {
       replyTo(btn.getAttribute('data-id'), btn.getAttribute('data-name'));
+      return;
+    }
+    const toggle = e.target.closest('.btn-toggle-replies');
+    if (toggle) {
+      const id = toggle.getAttribute('data-id');
+      const repliesEl = document.getElementById(`replies-${id}`);
+      if (repliesEl) {
+        const isHidden = repliesEl.style.display === 'none';
+        repliesEl.style.display = isHidden ? '' : 'none';
+        const count = repliesEl.children.length;
+        toggle.textContent = isHidden ? `收起回复` : `查看 ${count} 条回复`;
+      }
     }
   });
 
@@ -826,6 +868,19 @@ import Layout from '../layouts/Layout.astro';
     border-color: var(--accent);
     color: var(--accent-cyan);
   }
+
+  .btn-toggle-replies {
+    background: none;
+    border: none;
+    color: var(--accent);
+    padding: 4px 0;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    margin-top: 0.25rem;
+  }
+
+  .btn-toggle-replies:hover { color: var(--accent-cyan); }
 
   .message-replies {
     margin-top: 0.5rem;
