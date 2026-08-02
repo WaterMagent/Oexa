@@ -124,8 +124,7 @@ function getSessionCookie(token, maxAge) {
     'HttpOnly',
     'Path=/',
     `Max-Age=${maxAge}`,
-    'SameSite=Lax',
-    ...(isLocal ? [] : ['Secure']),
+    ...(isLocal ? ['SameSite=Lax'] : ['SameSite=None', 'Secure']),
   ].join('; ');
 }
 
