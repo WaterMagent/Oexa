@@ -135,13 +135,22 @@ async function handleList(headers) {
   const comments = await ghRequest(`/repos/${OWNER}/${REPO}/issues/${issueNum}/comments?per_page=100&sort=created&direction=desc`);
 
   const messages = (Array.isArray(comments) ? comments : []).map((c) => {
+    // Default: bot identity (no avatar — we don't know the real user's)
     let author = { name: c.user.login, provider: 'github', avatar: '' };
     let body = c.body || '';
-    // Format: [provider|username|avatar_b64] message
-    const m = body.match(/^\[([a-z]+)\|([^|]+)\|([^\]]+)\]\s*/i);
-    if (m) {
-      author = { name: m[2], provider: m[1], avatar: Buffer.from(m[3], 'base64url').toString('utf-8') };
-      body = body.slice(m[0].length);
+
+    // Try new format: [provider|username|avatar_b64] (avatar may be empty)
+    const mNew = body.match(/^\[([a-z]+)\|([^|]+)\|([^\]]*)\]\s*/i);
+    if (mNew) {
+      author = { name: mNew[2], provider: mNew[1], avatar: Buffer.from(mNew[3], 'base64url').toString('utf-8') };
+      body = body.slice(mNew[0].length);
+    } else {
+      // Try old format: [provider:username]
+      const mOld = body.match(/^\[([a-z]+):([^\]]+)\]\s*/i);
+      if (mOld) {
+        author = { name: mOld[2], provider: mOld[1], avatar: '' };
+        body = body.slice(mOld[0].length);
+      }
     }
     return { id: c.id, author, body, created_at: c.created_at };
   });
@@ -166,7 +175,7 @@ async function handleCreate(event, headers) {
   }
 
   const issueNum = await getIssueNumber();
-  const avatarB64 = Buffer.from(user.avatar || '').toString('base64url');
+  const avatarB64 = user.avatar ? Buffer.from(user.avatar).toString('base64url') : '';
   const formatted = `[${user.provider}|${user.name}|${avatarB64}] ${message}`;
   const comment = await ghRequest(`/repos/${OWNER}/${REPO}/issues/${issueNum}/comments`, {
     method: 'POST',
