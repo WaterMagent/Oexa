@@ -409,18 +409,14 @@ async function handleCallback(event, params, headers) {
   const token = await createSessionToken(user);
   const sessionCookie = getSessionCookie(token, SESSION_MAX_AGE);
 
-  // Clear oauth state cookie
-  const clearCookie = `${'gb_oauth'}=; HttpOnly; Path=/; Max-Age=0`;
-
   // Redirect to guestbook page
   const guestbookUrl = `${siteUrl}/guestbook`;
 
   return {
     statusCode: 302,
     headers: {
-      ...headers,
       Location: guestbookUrl,
-      'Set-Cookie': `${sessionCookie}\n${clearCookie}`,
+      'Set-Cookie': sessionCookie,
     },
   };
 }
