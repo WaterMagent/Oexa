@@ -90,11 +90,19 @@ import Layout from '../layouts/Layout.astro';
       if (providers.length > 0) {
         renderProviderButtons(providers);
         loginOptions.style.display = 'block';
+      } else {
+        // No providers configured — show setup help
+        loginOptions.style.display = 'block';
+        providerButtons.innerHTML = `
+          <div class="setup-guide">
+            <p class="setup-title">尚未配置 OAuth 登录</p>
+            <p>管理员需要在 Netlify 环境变量中配置至少一个 OAuth 提供商。</p>
+            <p>支持 GitHub / Google / GitLab / Gitee，详见 <code>netlify.toml</code>。</p>
+          </div>`;
       }
     } catch {
-      // API not available — likely dev without netlify dev running
       loginOptions.style.display = 'block';
-      providerButtons.innerHTML = '<p class="login-hint">API 未连接。部署到 Netlify 后可用。</p>';
+      providerButtons.innerHTML = '<p class="login-hint">API 未连接。请使用 <code>netlify dev</code> 或部署到 Netlify。</p>';
     }
   }
 
@@ -147,7 +155,13 @@ import Layout from '../layouts/Layout.astro';
     authLoading.style.display = 'none';
     userPanel.style.display = 'none';
     formSection.style.display = 'none';
-    // Provider buttons should already be visible from loadProviders
+    // Ensure login area is visible (loadProviders may still be running)
+    if (loginOptions.style.display === 'none') {
+      loginOptions.style.display = 'block';
+      if (!providerButtons.innerHTML) {
+        providerButtons.innerHTML = '<p class="login-hint">加载登录方式中...</p>';
+      }
+    }
   }
 
   // ── Logout ──
@@ -546,6 +560,33 @@ import Layout from '../layouts/Layout.astro';
     color: var(--text);
     word-break: break-word;
     white-space: pre-wrap;
+  }
+
+  /* Setup guide (shown when no OAuth providers configured) */
+  .setup-guide {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.5rem;
+    line-height: 1.7;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+
+  .setup-guide .setup-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 0.5rem;
+  }
+
+  .setup-guide code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--bg);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--accent-cyan);
   }
 
   @media (max-width: 768px) {
