@@ -297,7 +297,11 @@ import Layout from '../layouts/Layout.astro';
           replyMap[m.parentId].push(m);
         }
       }
-      allMessages = topLevel.map((m) => ({ ...m, replies: replyMap[m.id] || [] }));
+      function thread(msg) {
+        const replies = (replyMap[msg.id] || []).map((r) => thread(r));
+        return { ...msg, replies };
+      }
+      allMessages = topLevel.map((m) => thread(m));
       currentMsgPage = 1;
       renderPage();
     } catch {
@@ -845,8 +849,10 @@ import Layout from '../layouts/Layout.astro';
   .message-reply .message-username { font-size: 0.8rem; }
   .message-reply .message-provider-tag { font-size: 0.6rem; }
   .message-reply .message-date { font-size: 0.7rem; }
-  .message-reply .message-body { font-size: 0.85rem; }
+  .message-reply .message-body { font-size: 0.85rem; line-height: 1.5; }
   .message-reply .message-body p { margin: 0.15rem 0; }
+  .message-reply .message-body p:first-child { margin-top: 0; }
+  .message-reply .message-body p:last-child { margin-bottom: 0; }
   .message-reply .btn-reply { font-size: 0.7rem; padding: 1px 8px; }
   .message-reply .message-actions { padding-top: 0.15rem; }
 
