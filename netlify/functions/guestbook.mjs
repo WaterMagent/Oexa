@@ -33,7 +33,8 @@ async function verifyToken(token) {
   try {
     const [payloadB64, sigB64] = token.split('.');
     if (!payloadB64 || !sigB64) return null;
-    const secret = process.env.OAUTH_JWT_SECRET || 'dev-secret-change-me-in-production';
+    const secret = process.env.OAUTH_JWT_SECRET;
+    if (!secret) throw new Error('OAUTH_JWT_SECRET not configured');
     const expectedSig = base64url(hmacSign(payloadB64, secret));
     if (sigB64 !== expectedSig) return null;
     const payload = JSON.parse(base64urlDecode(payloadB64).toString('utf-8'));
@@ -233,7 +234,8 @@ async function handleDelete(event, headers) {
   }
 
   const issueNum = await getIssueNumber();
-  const isAdmin = user.name === 'WaterMagent';
+  const adminUid = process.env.ADMIN_GITHUB_UID || '';
+  const isAdmin = adminUid && user.provider === 'github' && user.uid === adminUid;
   const deleted = [];
   const errors = [];
 

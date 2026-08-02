@@ -73,7 +73,9 @@ function hmacSign(payload, secret) {
 const SESSION_MAX_AGE = 7 * 24 * 3600;
 
 function getJwtSecret() {
-  return process.env.OAUTH_JWT_SECRET || 'dev-secret-change-me-in-production';
+  const secret = process.env.OAUTH_JWT_SECRET;
+  if (!secret) throw new Error('OAUTH_JWT_SECRET not configured');
+  return secret;
 }
 
 async function createSessionToken(user) {
