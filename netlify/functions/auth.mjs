@@ -366,7 +366,7 @@ async function handleCallback(event, params, headers) {
     code,
     redirect_uri: redirectUri,
     grant_type: 'authorization_code',
-    code_verifier: actualVerifier,
+    code_verifier: codeVerifier,
   });
 
   const tokenHeaders = {
