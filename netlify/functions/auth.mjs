@@ -407,26 +407,31 @@ async function handleCallback(event, params, headers) {
   // Create session token
   const token = await createSessionToken(user);
 
-  // Also set cookie for /me endpoint compatibility
-  const sessionCookie = getSessionCookie(token, SESSION_MAX_AGE);
+  // Set a JS-readable cookie so the client can send it as Authorization header
+  const jsTokenCookie = [
+    `gb_token=${token}`,
+    'Path=/',
+    `Max-Age=${SESSION_MAX_AGE}`,
+    'SameSite=Lax',
+  ].join('; ');
 
-  // Redirect to guestbook page with token in hash (bypasses cookie issues)
-  const guestbookUrl = `${siteUrl}/guestbook#gb_token=${encodeURIComponent(token)}`;
+  // Redirect to guestbook page
+  const guestbookUrl = `${siteUrl}/guestbook`;
 
   return {
     statusCode: 302,
     headers: {
       Location: guestbookUrl,
-      'Set-Cookie': sessionCookie,
+      'Set-Cookie': jsTokenCookie,
     },
   };
 }
 
 async function handleMe(event, headers) {
-  // Check cookie first, then Authorization header
+  // Check cookies first (gb_session or gb_token), then Authorization header
   let token = '';
   const cookies = parseCookies(event.headers?.cookie || '');
-  token = cookies[SESSION_COOKIE] || '';
+  token = cookies[SESSION_COOKIE] || cookies['gb_token'] || '';
 
   if (!token) {
     const authHeader = event.headers?.authorization || '';

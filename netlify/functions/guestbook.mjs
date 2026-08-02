@@ -68,7 +68,7 @@ async function hmacSign(payload, secret) {
 
 async function verifySession(cookieHeader) {
   const cookies = parseCookies(cookieHeader);
-  const token = cookies['gb_session'] || '';
+  const token = cookies['gb_session'] || cookies['gb_token'] || '';
   return verifyTokenDirect(token);
 }
 
