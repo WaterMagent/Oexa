@@ -49,8 +49,6 @@ const issue = Astro.props.issue || '[Guestbook]';
     root.dataset.cInit = '1';
 
     const issueName = root.dataset.issue || '[Guestbook]';
-
-  const issueName = root.dataset.issue || '[Guestbook]';
   const API_AUTH = '/.netlify/functions/auth';
   const API_GB = `/.netlify/functions/guestbook?issue=${encodeURIComponent(issueName)}`;
 
