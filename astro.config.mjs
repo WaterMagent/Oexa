@@ -12,6 +12,11 @@ export default defineConfig({
           changeOrigin: true,
           rewrite: (path) => path.replace('/api/music/lyric', '/api/song/lyric'),
         },
+        // Dev proxy for Netlify Functions (requires `netlify dev` on port 8888)
+        '/.netlify/functions': {
+          target: 'http://localhost:8888',
+          changeOrigin: true,
+        },
       },
     },
   },

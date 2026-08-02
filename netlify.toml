@@ -1,0 +1,34 @@
+[functions]
+  directory = "netlify/functions"
+
+[functions.auth]
+  # Auth function handles OAuth login/callback/logout/me
+  path = "/.netlify/functions/auth"
+
+[functions.guestbook]
+  # Guestbook function handles comment CRUD
+  path = "/.netlify/functions/guestbook"
+
+# ── Environment Variables ──
+# Each OAuth provider needs CLIENT_ID and CLIENT_SECRET.
+# Only configured providers will appear on the login page.
+
+[build.environment]
+  # Site URL (used for OAuth redirect URIs)
+  # SITE_URL = "https://your-site.netlify.app"
+
+  # JWT secret for signing session cookies
+  # OAUTH_JWT_SECRET = "generate-a-random-secret-here"
+
+  # GitHub bot token for posting guestbook comments
+  # GITHUB_BOT_TOKEN = "github_pat_..."
+
+  # ── OAuth Providers (uncomment to enable) ──
+  # OAUTH_GITHUB_CLIENT_ID = ""
+  # OAUTH_GITHUB_CLIENT_SECRET = ""
+  # OAUTH_GITLAB_CLIENT_ID = ""
+  # OAUTH_GITLAB_CLIENT_SECRET = ""
+  # OAUTH_GOOGLE_CLIENT_ID = ""
+  # OAUTH_GOOGLE_CLIENT_SECRET = ""
+  # OAUTH_GITEE_CLIENT_ID = ""
+  # OAUTH_GITEE_CLIENT_SECRET = ""

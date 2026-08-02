@@ -1,0 +1,571 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="留言板" description="用 OAuth 登录后即可留言">
+  <section class="guestbook fade-in">
+    <h1 class="guestbook-title">
+      <span class="page-title-accent"></span>
+      留言板
+    </h1>
+    <p class="guestbook-desc">登录后即可留言，你的足迹会永久留在这里。</p>
+
+    <div id="guestbook-app">
+      <div id="auth-section">
+        <!-- Unauthenticated: provider buttons -->
+        <div id="login-options" class="login-options" style="display:none">
+          <p class="login-hint">选择登录方式：</p>
+          <div id="provider-buttons" class="provider-buttons"></div>
+        </div>
+        <!-- Authenticated: user info -->
+        <div id="user-panel" class="user-panel" style="display:none">
+          <img id="user-avatar" class="user-avatar" alt="" width="36" height="36" />
+          <span class="user-meta">
+            <span id="user-name" class="user-name"></span>
+            <span id="user-provider" class="user-provider"></span>
+          </span>
+          <button id="logout-btn" class="btn-logout">退出</button>
+        </div>
+        <!-- Loading -->
+        <div id="auth-loading" class="auth-loading">检查登录状态...</div>
+      </div>
+
+      <!-- Comment form (authenticated only) -->
+      <div id="form-section" class="form-section" style="display:none">
+        <textarea id="message-input" class="message-input" placeholder="写点什么呢..." maxlength="500" rows="3"></textarea>
+        <div class="form-actions">
+          <span id="char-count" class="char-count">0/500</span>
+          <button id="submit-btn" class="btn-primary">发送留言</button>
+        </div>
+      </div>
+
+      <div id="message-list" class="message-list">
+        <div class="loading">加载留言中...</div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<script>
+(() => {
+  // Guard: only initialize once (View Transitions re-run scripts)
+  if (window.__gb_init) return;
+  window.__gb_init = true;
+
+  const API_AUTH = '/.netlify/functions/auth';
+  const API_GB = '/.netlify/functions/guestbook';
+
+  // DOM refs
+  const loginOptions = document.getElementById('login-options');
+  const providerButtons = document.getElementById('provider-buttons');
+  const userPanel = document.getElementById('user-panel');
+  const userAvatar = document.getElementById('user-avatar');
+  const userNameEl = document.getElementById('user-name');
+  const userProvider = document.getElementById('user-provider');
+  const logoutBtn = document.getElementById('logout-btn');
+  const authLoading = document.getElementById('auth-loading');
+  const formSection = document.getElementById('form-section');
+  const messageInput = document.getElementById('message-input');
+  const charCount = document.getElementById('char-count');
+  const submitBtn = document.getElementById('submit-btn');
+  const messageListEl = document.getElementById('message-list');
+
+  let currentUser = null;
+
+  // ── Provider Icons (inline SVG, no emoji) ──
+  const PROVIDER_ICONS = {
+    github: '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>',
+    gitlab: '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M15.97 9.33l-1.59-4.89a.47.47 0 00-.45-.31h-.06a.49.49 0 00-.44.28l-1.12 3.44H4.18L3.07 4.4a.49.49 0 00-.44-.28h-.06a.48.48 0 00-.46.31L.53 9.33a.98.98 0 00.27 1.03l6.91 5.01a.5.5 0 00.59 0l6.9-5.01a.98.98 0 00.27-1.03z"/></svg>',
+    google: '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8.16 7.27h5.82c.06.3.1.66.1 1.1 0 3.76-2.5 6.42-6.3 6.42A6.64 6.64 0 011.16 8a6.64 6.64 0 016.72-6.72c1.8 0 3.3.66 4.46 1.74l-1.86 1.8a3.83 3.83 0 00-2.6-1 3.88 3.88 0 00-3.88 3.88 3.88 3.88 0 003.88 3.88c2.02 0 3.36-1 3.84-2.44H8.16V7.27z"/></svg>',
+    gitee: '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm2.16 12.5H5.84v-1.5h4.32v1.5zm0-3H5.84v-1.5h4.32v1.5zM10 6.5H6V5h4v1.5z"/></svg>',
+    default: '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4v4l3 2"/></svg>',
+  };
+
+  // ── Load Providers ──
+  async function loadProviders() {
+    try {
+      const res = await fetch(`${API_AUTH}?action=providers`, { credentials: 'include' });
+      const data = await res.json();
+      const providers = data.providers || [];
+      if (providers.length > 0) {
+        renderProviderButtons(providers);
+        loginOptions.style.display = 'block';
+      }
+    } catch {
+      // API not available — likely dev without netlify dev running
+      loginOptions.style.display = 'block';
+      providerButtons.innerHTML = '<p class="login-hint">API 未连接。部署到 Netlify 后可用。</p>';
+    }
+  }
+
+  function renderProviderButtons(providers) {
+    providerButtons.innerHTML = providers.map((p) => {
+      const icon = PROVIDER_ICONS[p.key] || PROVIDER_ICONS['default'];
+      return `<button class="btn-provider btn-provider-${p.key}" data-provider="${p.key}">
+        <span class="btn-provider-icon">${icon}</span>
+        <span class="btn-provider-label">${p.name}</span>
+      </button>`;
+    }).join('');
+
+    providerButtons.querySelectorAll('.btn-provider').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const provider = btn.getAttribute('data-provider');
+        // Redirect to OAuth flow
+        window.location.href = `${API_AUTH}?action=login&provider=${provider}`;
+      });
+    });
+  }
+
+  // ── Auth Check ──
+  async function checkAuth() {
+    try {
+      const res = await fetch(`${API_AUTH}?action=me`, { credentials: 'include' });
+      const data = await res.json();
+      if (data.authenticated && data.user) {
+        currentUser = data.user;
+        showAuthenticatedUI(currentUser);
+      } else {
+        showUnauthenticatedUI();
+      }
+    } catch {
+      showUnauthenticatedUI();
+    }
+  }
+
+  function showAuthenticatedUI(user) {
+    authLoading.style.display = 'none';
+    loginOptions.style.display = 'none';
+    userPanel.style.display = 'flex';
+    formSection.style.display = 'block';
+    userAvatar.src = user.avatar || '';
+    userAvatar.style.display = user.avatar ? '' : 'none';
+    userNameEl.textContent = user.name;
+    userProvider.textContent = `via ${user.provider}`;
+  }
+
+  function showUnauthenticatedUI() {
+    authLoading.style.display = 'none';
+    userPanel.style.display = 'none';
+    formSection.style.display = 'none';
+    // Provider buttons should already be visible from loadProviders
+  }
+
+  // ── Logout ──
+  logoutBtn.addEventListener('click', () => {
+    window.location.href = `${API_AUTH}?action=logout&redirect=/guestbook`;
+  });
+
+  // ── Load Messages ──
+  async function loadMessages() {
+    messageListEl.innerHTML = '<div class="loading">加载留言中...</div>';
+    try {
+      const res = await fetch(API_GB, { credentials: 'include' });
+      const data = await res.json();
+      const messages = data.messages || [];
+      renderMessages(messages);
+    } catch {
+      messageListEl.innerHTML = '<div class="error-msg">无法加载留言。API 未连接。</div>';
+    }
+  }
+
+  function renderMessages(messages) {
+    if (!messages.length) {
+      messageListEl.innerHTML = '<div class="empty-msg">还没有留言，来写下第一条吧。</div>';
+      return;
+    }
+    messageListEl.innerHTML = messages.map((m) => {
+      const date = new Date(m.created_at).toLocaleDateString('zh-CN', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+      return `
+        <div class="message-card">
+          <div class="message-header">
+            <span class="message-user">
+              ${m.author.avatar ? `<img class="message-avatar" src="${escapeAttr(m.author.avatar)}" alt="" width="32" height="32" />` : ''}
+              <span class="message-username">${escapeHtml(m.author.name)}</span>
+              <span class="message-provider-tag">${escapeHtml(m.author.provider)}</span>
+            </span>
+            <span class="message-date">${date}</span>
+          </div>
+          <div class="message-body">${escapeHtml(m.body)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function escapeAttr(str) {
+    return str.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ── Submit Message ──
+  async function submitMessage() {
+    const body = messageInput.value.trim();
+    if (!body) return;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '发送中...';
+
+    try {
+      const res = await fetch(API_GB, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message: body }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '发送失败');
+      messageInput.value = '';
+      charCount.textContent = '0/500';
+      await loadMessages();
+    } catch (err) {
+      alert(err.message || '留言发送失败，请稍后再试。');
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = '发送留言';
+  }
+
+  messageInput.addEventListener('input', () => {
+    const len = messageInput.value.length;
+    charCount.textContent = `${len}/500`;
+  });
+
+  submitBtn.addEventListener('click', submitMessage);
+
+  messageInput.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      submitMessage();
+    }
+  });
+
+  // ── Init ──
+  loadProviders();
+  checkAuth();
+  loadMessages();
+})();
+</script>
+
+<style is:global>
+  .guestbook {
+    padding: 2rem 0 4rem;
+  }
+
+  .guestbook-title {
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.03em;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .page-title-accent {
+    display: inline-block;
+    width: 4px;
+    height: 1.3em;
+    background: linear-gradient(180deg, var(--accent), var(--accent-cyan));
+    border-radius: 2px;
+  }
+
+  .guestbook-desc {
+    color: var(--text-dim);
+    margin-bottom: 1.5rem;
+    font-size: 1.05rem;
+  }
+
+  /* ── Auth section ── */
+  .login-hint {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+  }
+
+  .auth-loading {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    padding: 0.5rem 0;
+  }
+
+  /* Provider buttons */
+  .provider-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .btn-provider {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-sans);
+  }
+
+  .btn-provider:hover {
+    border-color: var(--accent);
+    background: var(--bg-hover);
+    color: var(--text-bright);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px var(--accent-glow);
+  }
+
+  .btn-provider-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+  }
+
+  .btn-provider-github { color: #f0f6fc; }
+  .btn-provider-gitlab { color: #fc6d26; }
+  .btn-provider-google { color: #4285f4; }
+  .btn-provider-gitee { color: #c71d23; }
+
+  .btn-provider:hover .btn-provider-icon {
+    color: var(--accent-cyan);
+  }
+
+  /* User panel */
+  .user-panel {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+  }
+
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    object-fit: cover;
+  }
+
+  .user-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .user-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-bright);
+  }
+
+  .user-provider {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+
+  .btn-logout {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-sans);
+  }
+
+  .btn-logout:hover {
+    color: var(--text-bright);
+    border-color: var(--accent);
+  }
+
+  /* Form */
+  .form-section {
+    margin-bottom: 2rem;
+  }
+
+  .message-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    color: var(--text);
+    font-family: var(--font-sans);
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+  }
+
+  .message-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .message-input::placeholder {
+    color: var(--text-dim);
+  }
+
+  .form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.6rem;
+  }
+
+  .char-count {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.65rem 1.25rem;
+    background: var(--accent);
+    color: #fff !important;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-sans);
+  }
+
+  .btn-primary:hover {
+    background: #7b73ff;
+    box-shadow: 0 0 20px var(--accent-glow);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* ── Message list ── */
+  .message-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-height: 80px;
+  }
+
+  .loading, .empty-msg, .error-msg {
+    text-align: center;
+    color: var(--text-dim);
+    padding: 3rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .message-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    transition: border-color 0.2s;
+  }
+
+  .message-card:hover {
+    border-color: rgba(108, 99, 255, 0.3);
+  }
+
+  .message-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
+
+  .message-user {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    object-fit: cover;
+  }
+
+  .message-username {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-bright);
+  }
+
+  .message-provider-tag {
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    color: var(--accent);
+    background: rgba(108, 99, 255, 0.1);
+    border: 1px solid rgba(108, 99, 255, 0.2);
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: lowercase;
+  }
+
+  .message-date {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+
+  .message-body {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text);
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+
+  @media (max-width: 768px) {
+    .guestbook-title { font-size: 1.8rem; }
+    .guestbook-desc { font-size: 0.95rem; }
+    .provider-buttons { flex-direction: column; }
+    .btn-provider { justify-content: center; }
+  }
+
+  @media (max-width: 600px) {
+    .guestbook-title { font-size: 1.5rem; }
+    .guestbook { padding: 1rem 0 2rem; }
+    .message-card { padding: 0.75rem 1rem; }
+    .btn-primary { font-size: 0.85rem; padding: 0.5rem 1rem; }
+  }
+
+  @media (max-width: 400px) {
+    .guestbook-title { font-size: 1.3rem; }
+    .guestbook-desc { font-size: 0.85rem; }
+    .message-username { font-size: 0.82rem; }
+    .message-body { font-size: 0.88rem; }
+  }
+</style>
