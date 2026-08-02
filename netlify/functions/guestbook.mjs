@@ -124,6 +124,7 @@ export const handler = async (event) => {
   try {
     if (event.httpMethod === 'GET') return await handleList(event, h);
     if (event.httpMethod === 'POST') return await handleCreate(event, h);
+    if (event.httpMethod === 'DELETE') return await handleDelete(event, h);
     return { statusCode: 405, headers: h, body: 'Method Not Allowed' };
   } catch (err) {
     return { statusCode: 500, headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: err.message }) };
@@ -214,5 +215,50 @@ async function handleCreate(event, headers) {
       ok: true,
       message: { id: String(comment.id), author: { name: user.name, provider: user.provider, avatar: user.avatar }, body: message, parentId, replies: [], created_at: comment.created_at },
     }),
+  };
+}
+
+async function handleDelete(event, headers) {
+  const user = await getSessionUser(event);
+  if (!user) {
+    return { statusCode: 401, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Authentication required' }) };
+  }
+
+  const params = event.queryStringParameters || {};
+  const ids = params.ids || params.id || '';
+  const idList = ids.split(',').map((s) => s.trim()).filter(Boolean);
+
+  if (!idList.length) {
+    return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing comment id(s)' }) };
+  }
+
+  const issueNum = await getIssueNumber();
+  const isAdmin = user.name === 'WaterMagent';
+  const deleted = [];
+  const errors = [];
+
+  for (const commentId of idList) {
+    try {
+      // Fetch the comment to check author
+      const comment = await ghRequest(`/repos/${OWNER}/${REPO}/issues/comments/${commentId}`);
+      const parsed = parseComment(comment);
+      const isAuthor = parsed.author.name === user.name && parsed.author.provider === user.provider;
+
+      if (!isAdmin && !isAuthor) {
+        errors.push({ id: commentId, error: 'Not authorized' });
+        continue;
+      }
+
+      await ghRequest(`/repos/${OWNER}/${REPO}/issues/comments/${commentId}`, { method: 'DELETE' });
+      deleted.push(commentId);
+    } catch (err) {
+      errors.push({ id: commentId, error: err.message });
+    }
+  }
+
+  return {
+    statusCode: 200,
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ok: true, deleted, errors }),
   };
 }
